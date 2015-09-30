@@ -6,10 +6,9 @@ for i in POSCAR-*; do
     dir="SCAN-"$num
     if [[ -d $dir ]]; then
 	echo "Error. Directory $dir already exist."
-	exit 1
+    else
+	mkdir $dir
+	cp KPOINTS INCAR  POTCAR $dir
+	cp $i $dir/POSCAR
     fi
-    
-    mkdir $dir
-    cp KPOINTS INCAR  POTCAR $dir
-    cp $i $dir/POSCAR
 done
