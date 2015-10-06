@@ -400,7 +400,7 @@ if (os.path.isfile(args.poscar_fn)):
             if (elnum<0):
                 print('Error getting chemical element number')
                 sys.exit(1)
-            if (ceil(atom_data[elnum][3]) != ceil(masses[n])):
+            if (abs(atom_data[elnum][3] - masses[n])>0.1):
                 print('Error.masses in periodic table and in vasprun.xml is not the same for element %d' % elnum)
                 sys.exit(0)
             else:
