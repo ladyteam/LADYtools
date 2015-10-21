@@ -269,7 +269,7 @@ parser = argparse.ArgumentParser(description='Script to generate rprimd and reci
 parser.add_argument("-d", "--dynmat", action="store", type=str, dest="dynmat_fn", default='qpoints.yaml', help="Dynamic matrix in yaml format")
 parser.add_argument("-c", "--poscar", action="store", type=str, dest="poscar_fn", default='POSCAR', help="vasp POSCAR file name")
 parser.add_argument("-v", "--vasprun", action="store", type=str, dest="vasprun_fn", default='vasprun.xml', help="vasp POSCAR file name")
-parser.add_argument("-m", "--mode", action="store", type=str, dest="modenum", default='1', help="Number of mode")
+parser.add_argument("-m", "--mode", action="store", type=int, dest="modenum", default=1, help="Number of mode")
 parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr", default='0 0.1 0.25 0.5 1', 
            help="Mode shift  amplitude, space separated")
 
@@ -289,11 +289,8 @@ for i in range(len(args.amplstr.split())):
         print('Error parsing amplitudes array')
         sys.exit(1)
 
-if isNumeric(args.modenum):
-    modenum=int(args.modenum)
-else:
-    print ("Error.Argument 'mode' is not numeric.")
-    sys.exit(1)
+modenum=args.modenum
+
 natom=0
 
 for line in qpoints_fh:
