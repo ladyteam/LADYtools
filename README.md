@@ -11,3 +11,4 @@ for i in SCAN*; do cd $i; echo -n "${i##SCAN-} "; grep TOTEN OUTCAR | tail -n1 |
 ABINIT:
 for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail -n1 | awk '{print ($2)}'; cd ..; done
 2. Simple script to extract FORCE_CONSTANTS from abinit output file in PHONOPY software format.
+3. Two utilites make_repr.py and make_repr_table.py to plot characters table and Irreps using ABINIT anaddb utility.
