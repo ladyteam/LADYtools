@@ -23,7 +23,8 @@
 # REPRES_STOP. Symmetry operations order in crystallographic block should be exactly the same 
 # as anaddb output file character table. The symmetry operations used by abinit could be translated 
 # from matrix form to international symbols with PHONOPY plot representation feature applied to
-# FC_CONSTANTS file extracted from abinit output with ladytools utils.
+# FC_CONSTANTS file extracted from abinit output with ladytools utils. See the matrix labels in
+# "Rotation matrices by transformation matrix" section.
 #
 # Example of crystallographic block:
 # D2h(mmm)  #   1  -1   2y   my   2z  mz   2x   mx

@@ -12,3 +12,4 @@ ABINIT:
 for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail -n1 | awk '{print ($2)}'; cd ..; done
 2. Simple script to extract FORCE_CONSTANTS from abinit output file in PHONOPY software format.
 3. Two utilites make_repr.py and make_repr_table.py to plot characters table and Irreps using ABINIT anaddb utility.
+4. abinit-patterns.tar.bz2 a set of patterns for ABINIT.
