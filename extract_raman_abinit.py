@@ -56,8 +56,8 @@ args.output.write("#nu,cm-1       xx           xy           xz           yx     
 
 for i in range(len(raman)):
     args.output.write("% 8.3f %s" % (raman[i][0], "".join("% 12.8f " % r for r in raman[i][1] )))
-    alpha=(raman[i][1][0]+raman[i][1][3]+raman[i][1][6])/3
-    gamma2=((raman[i][1][0]-raman[i][1][3])**2 + (raman[i][1][3]-raman[i][1][6])**2 +(raman[i][1][6]-raman[i][1][0])**2)/2
+    alpha=(raman[i][1][0]+raman[i][1][4]+raman[i][1][8])/3
+    gamma2=((raman[i][1][0]-raman[i][1][4])**2 + (raman[i][1][4]-raman[i][1][8])**2 +(raman[i][1][8]-raman[i][1][0])**2)/2
     gamma2+=3*(raman[i][1][1]**2+raman[i][1][2]**2+raman[i][1][5]**2)
     Iper=(45*alpha**2+4*gamma2)/45
     Ipar=gamma2/15
@@ -91,8 +91,8 @@ if (LOexist):
 
     for i in range(len(raman)):
         args.output.write("% 8.3f %s" % (raman[i][0], "".join("% 12.8f " % r for r in raman[i][1] )))
-        alpha=(raman[i][1][0]+raman[i][1][3]+raman[i][1][6])/3
-        gamma2=((raman[i][1][0]-raman[i][1][3])**2 + (raman[i][1][3]-raman[i][1][6])**2 +(raman[i][1][6]-raman[i][1][0])**2)/2
+        alpha=(raman[i][1][0]+raman[i][1][4]+raman[i][1][8])/3
+        gamma2=((raman[i][1][0]-raman[i][1][4])**2 + (raman[i][1][4]-raman[i][1][8])**2 +(raman[i][1][8]-raman[i][1][0])**2)/2
         gamma2+=3*(raman[i][1][1]**2+raman[i][1][2]**2+raman[i][1][5]**2)
         Iper=(45*alpha**2+4*gamma2)/45
         Ipar=gamma2/15
