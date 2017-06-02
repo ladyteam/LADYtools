@@ -79,10 +79,8 @@ if (LOexist):
     args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
     for line in args.input:
         if('Electronic dielectric tensor' in line):
-            print("break")
             break
         if('Mod' in line):
-            print line
             freq=float(line.split('(')[1].split()[0])
             buf=[]
             for i in range(3):
