@@ -52,7 +52,7 @@ for line in args.input:
 
 
 args.output.write("#Raman susceptibilities of transverse zone-center phonon modes, Intensities multiplied by 10^5\n")
-args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz      alpha     gamma2    Ipar  Iperp   Itot\n")
+args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
 
 for i in range(len(raman)):
     args.output.write("% 8.3f %s" % (raman[i][0], "".join("% 12.8f " % r for r in raman[i][1] )))
@@ -76,8 +76,7 @@ for line in args.input:
 raman=[]
 if (LOexist):
     args.output.write("#Raman susceptibilities of zone-center phonons, with non-analyticity in direction %s" % args.input.next().split(")")[1] )
-    args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz      alpha     gamma2    Ipar  Iperp   Itot\n")
-
+    args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
     for line in args.input:
         if('Electronic dielectric tensor' in line):
             print("break")
