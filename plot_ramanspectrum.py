@@ -104,6 +104,10 @@ else:
 xc=[]
 A=[]
 w=[]
+
+if(args.islin):
+    print("Warning. Linear components provided not intencity. Components of raman tensor will be squared")
+
 for line in input_fh:
     if (re.search('^\s*$',line)):
         continue
