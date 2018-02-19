@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Extract Dynamical matrix from ABINIT output file and write  FORCE_CONSTANTS file in 
-# PHONOPY software format.
+# PHONOPY software format. Aware to use asr variable in ABINIT input file.
 #
 # Author: Eugene Roginskii
 #
@@ -147,5 +147,5 @@ for n1 in range(natom):
     for n2 in range(natom):
         out_fh.write("%d %d\n" %((n1+1),(n2+1)))
         for i in range(3):
-            out_fh.write('  %s\n' % ' '.join('%13.10f' % fc[n1][n2][j][i] for j in range(3)))
+            out_fh.write('  %s\n' % ' '.join('%13.9f' % fc[n1][n2][i][j] for j in range(3)))
 
