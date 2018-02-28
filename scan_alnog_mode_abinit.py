@@ -248,7 +248,7 @@ atom_data = [
     ]
 
 
-parser = argparse.ArgumentParser(description='The program is to calculate Raman tensor with finite displacements method by ABINIT code')
+parser = argparse.ArgumentParser(description='The program to distort geometry along selected normal mode eigenvector. Abinit input format')
 
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="abinit_fn", help="Abinit Input filename")
@@ -537,18 +537,12 @@ else:
 
 # GENERATION OF DISPLACEMENTS ABINIT INPUT FILES
 #j - mode number; i -atom number
-#for i in range(natom):
-#    for j in range(natom*3)
-#        cartshiftd[i,j]=[999.0,999.0,999.0]
 j=args.modenum-1
 for n in range(len(ampl)):
     cartshiftdm=[]
     cartshiftdp=[]
 
-    print ('mode: %d %8.5f' % ((n+1),frequencies[j] * factorcm))
-    print('====mass:====')
-#    for i in range(natom):
-#        print("%f"%masses[i])
+    print ('mode: %d freq: %8.5f' % ((j+1),frequencies[j] * factorcm))
 
     print('====eigenvector:====')
     for i in range(natom):
@@ -558,18 +552,12 @@ for n in range(len(ampl)):
     print('shiftvector:')
 
     for i in range(natom):
-#        print('natom: %d' % (i+1)) 
-#        print(["Evec: %17.14f" % eigvecs[i * 3 + l, j].real for l in range(3)])
         shiftvec=[0.0e0,0.0e0,0.0e0]
         for l in range(3):
             shiftvec[l]=eigvecs[i*3+l,j]*ampl[n]*sqrt(hbar/(AMU*masses[i]*abs(frequencies[j])*factorHz))*1e9*Angst2Bohr
-        print(["%10.7f" % shiftvec[l] for l in range(3)])
         cartshiftdm.append(cartpos[i]-np.array(shiftvec))
         cartshiftdp.append(cartpos[i]+np.array(shiftvec))
 
-    print('shifted:')
-    for cartat in cartshiftdm:
-        print ("%12.9f %12.9f %12.9f" % (cartat.tolist()[0], cartat.tolist()[1], cartat.tolist()[2]))
     abinitfn="shiftcell-%.3f.in" % ampl[n]
 
     genabinit(abinitfn,j+1,basis,natom,typat,znucl,cartshiftdm,'freq = %9.4f cm-1; Delta=%6.4f' % ((frequencies[j] * factorcm),ampl[n]))
