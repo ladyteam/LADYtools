@@ -33,10 +33,28 @@ parser.add_argument('-o', '--output', required=True, type=argparse.FileType('w')
 args = parser.parse_args()
 
 
+raman=[]
+freqs=[]
+
+
+for line in args.input:
+    if('Phonon frequencies in cm-1' in line):
+        break
+
+for line in args.input:
+    if('Eigendisplacements' in line):
+        break
+
+    if(line[0] == '-'):
+        for i in range(len(line.split())-1):
+            freqs.append(float(line.split()[i+1]))
+    else:
+        break
+
 for line in args.input:
     if ("Raman susceptibilities of transverse zone-center phonon modes" in line):
         break
-raman=[]
+
 
 for line in args.input:
     if('Electronic dielectric tensor' in line):
@@ -52,10 +70,10 @@ for line in args.input:
 
 
 args.output.write("#Raman susceptibilities of transverse zone-center phonon modes, Intensities multiplied by 10^5\n")
-args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
+args.output.write("#nu,cm-1   nu_asm       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
 
 for i in range(len(raman)):
-    args.output.write("% 8.3f %s" % (raman[i][0], "".join("% 12.8f " % r for r in raman[i][1] )))
+    args.output.write("% 8.3f % 8.3f %s" % (raman[i][0], freqs[i], "".join("% 12.8f " % r for r in raman[i][1] )))
     alpha=(raman[i][1][0]+raman[i][1][4]+raman[i][1][8])/3
     gamma2=((raman[i][1][0]-raman[i][1][4])**2 + (raman[i][1][4]-raman[i][1][8])**2 +(raman[i][1][8]-raman[i][1][0])**2)/2
     gamma2+=3*(raman[i][1][1]**2+raman[i][1][2]**2+raman[i][1][5]**2)
@@ -76,7 +94,7 @@ for line in args.input:
 raman=[]
 if (LOexist):
     args.output.write("#Raman susceptibilities of zone-center phonons, with non-analyticity in direction %s" % args.input.next().split(")")[1] )
-    args.output.write("#nu,cm-1       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
+    args.output.write("#nu,cm-1   nu_asm       xx           xy           xz           yx           yy           yz           zx           zy           zz         alpha       gamma2     Ipar    Iperp    Itot\n")
     for line in args.input:
         if('Electronic dielectric tensor' in line):
             break
@@ -90,7 +108,7 @@ if (LOexist):
             raman.append([freq,[buf[i] for i in range(9)]])
 
     for i in range(len(raman)):
-        args.output.write("% 8.3f %s" % (raman[i][0], "".join("% 12.8f " % r for r in raman[i][1] )))
+        args.output.write("% 8.3f % 8.3f %s" % (raman[i][0], freqs[i], "".join("% 12.8f " % r for r in raman[i][1] )))
         alpha=(raman[i][1][0]+raman[i][1][4]+raman[i][1][8])/3
         gamma2=((raman[i][1][0]-raman[i][1][4])**2 + (raman[i][1][4]-raman[i][1][8])**2 +(raman[i][1][8]-raman[i][1][0])**2)/2
         gamma2+=3*(raman[i][1][1]**2+raman[i][1][2]**2+raman[i][1][5]**2)

@@ -15,3 +15,5 @@ for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail
 4. abinit-patterns.tar.bz2 -- is a set of patterns for ABINIT.
 5. extract_raman_abinit.py -- Extract raman tensor and rotational invariants (Long's notation) from ABINIT anaddb output
 6. plot_ramanspectrum.py -- Plot raman spectrum with given intensities and line halfwidths.
+7. bond_shortcut_by_atom.py -- Add atoms into the file with xyz format to shortcut open bonds.
+8. extract_dipole_geom.py --  Exctract from Gaussian output dipole oriented geometry and save file in xyz format (the rotation option could be activated)
