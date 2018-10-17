@@ -167,7 +167,7 @@ for d in dist:
 mult=mind/float(args.minpt)
 
 print('Suggested number in each section is:')
-ntot=0
+ntot=1
 for i in range(len(points)-1):
     npt=dist[i]/mult
     print('Section %s-%s, npt: %d' % (points[i][1],points[i+1][1], int(round(npt)))  )
