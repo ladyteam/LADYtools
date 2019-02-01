@@ -25,8 +25,8 @@ for file in shiftcell-*; do
 	fn=${file%.in}
 	num=${fn##*-}
 	if [[ -d "displ-$num" ]]; then
-	    echo "Error directory displ-$num already exist"
-	    exit 1
+	    echo "Warning directory displ-$num already exist"
+	    continue
 	fi
 	echo "Making displ-$num directory"
         mkdir displ-$num

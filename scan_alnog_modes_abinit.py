@@ -119,11 +119,9 @@ hbar=6.6260695729e-34 #J*s
 EV = 1.60217733e-19 # [J]
 #
 Angst2Bohr=1.889725989
-#print sqrt(hbar/AMU/10e12)*10e10 #Angstrom
-basedirname='epsilon'
-Temp=300
-ramanmult=0.0028
 
+#default amplitude of mode shifting
+ampldflt=1
 
 atom_data = [ 
     [  0, "X", "X", 0], # 0
@@ -254,10 +252,12 @@ parser = argparse.ArgumentParser(description='The program to distort geometry al
 parser.add_argument("-i", "--input", action="store", type=str, dest="abinit_fn", help="Abinit Input filename")
 parser.add_argument("-d", "--dynmat", action="store", type=str, dest="dynmat_fn", default='qpoints.yaml', help="Dynmat in yaml format filename")
 parser.add_argument("-m", "--modes", action="store", type=str, dest="modesnum", default="1", help="Number of modes space separated")
-parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr", default='0.1 0.25 0.5 1', 
+parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr",
            help="Mode shift  amplitude for each mode, space separated")
 
 args = parser.parse_args()
+
+
 
 if (args.abinit_fn == None):
     print('Error. No input filename was given.')
@@ -276,12 +276,17 @@ except IOError:
     sys.exit(1)
 
 ampl=[]
-for i in range(len(args.amplstr.split())):
-    if isNumeric(args.amplstr.split()[i]):
-        ampl.append(float(args.amplstr.split()[i]))
-    else:
-        print('Error parsing amplitudes array')
-        sys.exit(1)
+if (args.amplstr is None):
+    print('The amplitudes parameter is not set. Set default amplitudes')
+    for i in range(len(args.modesnum)):
+        ampl.append(ampldflt)
+else:
+    for i in range(len(args.amplstr.split())):
+        if isNumeric(args.amplstr.split()[i]):
+            ampl.append(float(args.amplstr.split()[i]))
+        else:
+            print('Error parsing amplitudes array')
+            sys.exit(1)
 
 modesnum=args.modesnum
 
@@ -537,6 +542,7 @@ else:
 
 # GENERATION OF DISPLACEMENTS ABINIT INPUT FILES
 #j - mode number; i -atom number
+
 n=0
 cartshiftdm=[]
 cartshiftdp=[]
