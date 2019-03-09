@@ -266,7 +266,7 @@ if (args.abinit_fn == None):
 try:
     abinit_fh = open(args.abinit_fn, 'r')
 except IOError:
-    print("ERROR Couldn't open qpoints file, exiting...")
+    print("ERROR Couldn't open abinit input file, exiting...")
     sys.exit(1)
 
 try:

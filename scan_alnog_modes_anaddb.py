@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,19 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# The program to distort geometry along selected normal mode eigenvector. Abinit input format
-#
+# Generate input files distorted along modes
 #
 # Author: Eugene Roginskii
 #
-# Some code was borrowed from very powerfool PHONOPY project
-# http://phonopy.sourceforge.net/
-# Copyright 2009, Atsushi Togo.
-
-def chunks(l, n):
-    if n < 1:
-        n = 1
-    return [l[i:i + n] for i in range(0, len(l), n)]
 
 def strType(var):
     try:
@@ -45,7 +36,6 @@ def isNumeric(var):
         return (True)
     return(False)
 
-
 def direct2cart(directpos,basis):
     cart=[]
     for atdirect in directpos:
@@ -55,7 +45,7 @@ def direct2cart(directpos,basis):
 
 def genabinit(abinitfn,modenum,basis,natom,typat,znucl,cartshiftd,comment):
     abinit_fh=open(abinitfn,'w')
-    abinit_fh.write('#Atom positions shifted along Mode %d\n' % modenum)
+    abinit_fh.write('#Atom positions shifted along %d modes\n' % modenum)
     abinit_fh.write('# %s\n' % comment)
     abinit_fh.write('acell 1.0 1.0 1.0\nrprim\n')
     for b in basis:
@@ -68,29 +58,11 @@ def genabinit(abinitfn,modenum,basis,natom,typat,znucl,cartshiftd,comment):
     for cartat in cartshiftd:
         abinit_fh.write('%12.9f %12.9f %12.9f\n' % (cartat.tolist()[0], cartat.tolist()[1], cartat.tolist()[2]))
 
-def get_epsilon(abinitfn):
-    e=[]
-    try:
-        abinit_fh = open(abinitfn, 'r')
-    except IOError:
-        print ("ERROR Couldn't open abinit output file %s, exiting...\n" % abinitfn)
-        sys.exit(1)
-
-    while True:
-        line=abinit_fh.readline()
-        if not line: break
-        if 'Dielectric tensor, in cartesian coordinates' in line:
-            while True:
-                sline=abinit_fh.readline()
-                if not sline: break
-                if 'Effective charges' in sline: break
-                if (re.match('\s*\d+\s*\d+',sline)):
-                    e.append(float(sline.split()[4]))
-            break
-    eps=np.array(e).reshape(3,3)
-    return eps
-
-
+def cart2direct(cartpos,basis):
+    direct=[]
+    for atcart in cartpos:
+        direct.append(np.dot(np.linalg.inv(np.transpose(basis)),atcart))
+    return np.array(direct)
 
 import numpy as np
 import re
@@ -98,32 +70,15 @@ from math import sqrt
 import sys
 from math import pi
 from math import exp
-from shutil import move
-import os
-import datetime
-import time
-import argparse
+from optparse import OptionParser
 import xml.etree.cElementTree as etree
+import argparse
 
-
-mau=1822.888485
-AMU = 1.6605402e-27 # [kg]
-
-# ABINIT freq to cm-1 factor
-factorcm=716.851928469
-# ABINIT freq to HZ factor
-factorHz=21.49068e12
-
-hbar=6.6260695729e-34 #J*s
-#hbar=4.13566751691e−15 #eV*s
-EV = 1.60217733e-19 # [J]
-#
 Angst2Bohr=1.889725989
-#print sqrt(hbar/AMU/10e12)*10e10 #Angstrom
-basedirname='epsilon'
-Temp=300
-ramanmult=0.0028
+HaTocm1=219474.631370515
 
+#default amplitude of mode shifting
+ampldflt=1
 
 atom_data = [ 
     [  0, "X", "X", 0], # 0
@@ -247,86 +202,55 @@ atom_data = [
     [118, "Uuo", "Ununoctium", 0], # 118
     ]
 
-
 parser = argparse.ArgumentParser(description='The program to distort geometry along selected normal mode eigenvector. Abinit input format')
 
+parser.add_argument("-i", "--input", action="store", type=str, dest="abinit_fn",  help="Abinit filename")
+parser.add_argument("-d", "--anaddb", action="store", type=str, dest="anaddb_fn",  help="Anaddb filename (only first dataset will be plotted)")
+parser.add_argument("-m", "--modes", action="store", type=str, dest="modesnum", default="1", help="Number of modes space separated")
+parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr",
+           help="Mode shift  amplitude for each mode, space separated")
 
-parser.add_argument("-i", "--input", action="store", type=str, dest="abinit_fn", help="Abinit Input filename")
-parser.add_argument("-d", "--dynmat", action="store", type=str, dest="dynmat_fn", default='qpoints.yaml', help="Dynmat in yaml format filename")
-parser.add_argument("-m", "--mode", action="store", type=int, dest="modenum", default=1, help="Number of mode")
-parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr", default='0.1 0.25 0.5 1', 
-           help="Mode shift  amplitude, space separated")
 
 args = parser.parse_args()
 
 if (args.abinit_fn == None):
-    print('Error. No input filename was given.')
+    print('Error. No Abinit input filename was given.')
     sys.exit(1)
 
 try:
     abinit_fh = open(args.abinit_fn, 'r')
 except IOError:
-    print("ERROR Couldn't open abinit input file, exiting...")
-    sys.exit(1)
-
-try:
-    qpoints_fh = open(args.dynmat_fn, 'r')
-except IOError:
-    print("ERROR Couldn't open qpoints file, exiting...")
+    print ("ERROR Couldn't open abinit file, exiting...")
+    print(IOError)
     sys.exit(1)
 
 ampl=[]
-for i in range(len(args.amplstr.split())):
-    if isNumeric(args.amplstr.split()[i]):
-        ampl.append(float(args.amplstr.split()[i]))
-    else:
-        print('Error parsing amplitudes array')
-        sys.exit(1)
+if (args.amplstr is None):
+    print('The amplitudes parameter is not set. Set default amplitudes')
+    for i in range(len(args.modesnum)):
+        ampl.append(ampldflt)
+else:
+    for i in range(len(args.amplstr.split())):
+        if isNumeric(args.amplstr.split()[i]):
+            ampl.append(float(args.amplstr.split()[i]))
+        else:
+            print('Error parsing amplitudes array')
+            sys.exit(1)
 
-modenum=args.modenum
-
-natom=0
-
-for line in qpoints_fh:
-    if  'natom' in line:
-        natom=int(line.split(':')[1])
-        print (natom*3)
-        break
-for line in qpoints_fh:
-    if 'dynamical_matrix' in line:
-        break
-i=0
-dynmatarray=[]
-for line in qpoints_fh:
-    if (i>=natom*3):
-        break
-    line=re.sub('^\s+-?\s*\[\s*', '', line)
-    line=re.sub('\s*\]\s*', '', line)
-    line=line.split(',')
-    k=0
-    dynmatline=chunks(line,2)
-    for dynmatelem, idynmatelem in dynmatline:
-        dynmatarray.append(float(dynmatelem))
-        k+=1
-    i+=1
-
-dm=np.array(dynmatarray).reshape(natom*3,k)
-dm=dm.transpose()
-
-eigvals, eigvecs = np.linalg.eigh(dm)
-eigvals = eigvals.real
-frequencies=[]
-
-frequencies=np.sqrt(np.abs(eigvals)) * np.sign(eigvals) 
 
 # abinit input file process
 acell=[]
-rprim=[1,0,0, 0,1,0, 0,0,1]
+rprim=[]
 typat=[]
 znucl=[]
+natom=0
 scalecart=[1.0,1.0,1.0]
+
+ntypat=0
+
+# First find natom
 while True:
-    line=abinit_fh.readline() 
+    line=abinit_fh.readline()
     if not line: break
     if (re.match('^\s*#',line)):
         continue
@@ -334,24 +258,25 @@ while True:
         line=re.sub('\s*#.*','',line)
 
     if  'natom' in line:
-        if(natom != int(line.split()[1])):
-            print('Error. Number of atoms in qpoints file and in abinit input file differ')
-            sys.exit(1)
-    elif 'ntypat' in line:
+        natom = int(line.split()[1])
+if (natom==0):
+    print('Error. The natom variable was not found in abinit input file.')
+    sys.exit(1)
+
+abinit_fh.seek(0)
+
+while True:
+    line=abinit_fh.readline()
+    if not line: break
+    if (re.match('^\s*#',line)):
+        continue
+    if '#' in line:
+        line=re.sub('\s*#.*','',line)
+    if 'ntypat' in line:
          ntypat=int(line.split()[1])
-    elif 'typat' in line:
-        if(re.match('^\s*typat\s+\d',line) is None):
-            line=abinit_fh.readline()
-            if(re.match('^\s*\d',line) is None): 
-                print('Error reading typat variable in abinit input file')
-                sys.exit(1)
-            else:
-                typat=[int(line.split()[i]) for i in range(natom)]
-        else:
-            typat=[int(line.split()[i+1]) for i in range(natom)] 
     elif 'znucl' in line:
         znuclstr=line.split()[1:]
-        znucl=[int(znuclstr[i]) for i in range(len(znuclstr)) ]
+        znucl=[int(float(znuclstr[i])) for i in range(len(znuclstr)) ]
         print('znucl= %s' % znucl)
     elif 'acell' in line:
         if re.match('.*acell.*\d+\s*A.*',line):
@@ -360,54 +285,40 @@ while True:
             acell=[float(line.split()[i+1]) for i in range(3)]
         print('acell = %s' % acell)
     elif 'rprim' in line:
-        rprim=[]
         try:
             for coor in line.split()[1:]:
                 rprim.append(float(coor)) 
             while True:
                 subline=abinit_fh.readline()
                 if not subline: break
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
                     for coor in subline.split():
-                        rprim.append(float(coor))
-                if (len(rprim) >= 9):
-                    break
-
+                        if (isNumeric(coor)==True):
+                            rprim.append(float(coor))
         except:
             while True:
                 subline=abinit_fh.readline()
                 if not subline: break
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
                     for coor in subline.split():
-                        rprim.append(float(coor))
-                if (len(rprim) >= 9):
-                    break
+                        if(isNumeric(coor)==True):
+                            rprim.append(float(coor))
     elif 'scalecart' in line:
         scalecart=[float(line.split()[i+1]) for i in range(3)] 
-
-
-print('rprim = %s' % rprim)
-print('natom = %d' % natom)
-print('typat = %s' % typat)
-
-# Start from begining to read xred xcart xangs
+print("########### rprim ###########")
+print(rprim)
+# Start from begining to read xred (xcart and xangs is not implemented)
 abinit_fh.seek(0)
 xred=[]
 xcart=[]
+
+if (len(rprim)<9):
+    rprim=[1,0,0,0,1,0,0,0,1]
+
 for line in abinit_fh:
     if (re.match('^\s*#',line)):
         continue
@@ -419,11 +330,6 @@ for line in abinit_fh:
             for coor in line.split()[1:]:
                 xred.append(float(coor))
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
@@ -431,11 +337,6 @@ for line in abinit_fh:
                         xred.append(float(coor))
         except:
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
@@ -446,11 +347,6 @@ for line in abinit_fh:
             for coor in line.split()[1:]:
                 xcart.append(float(coor))
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
@@ -458,11 +354,6 @@ for line in abinit_fh:
                         xcart.append(float(coor))
         except:
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
@@ -473,11 +364,6 @@ for line in abinit_fh:
             for coor in line.split()[1:]:
                 xcart.append(float(coor)*Angst2Bohr)
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
@@ -485,16 +371,33 @@ for line in abinit_fh:
                         xcart.append(float(coor)*Angst2Bohr)
         except:
             for subline in abinit_fh:
-                if (re.match('^\s*#',subline)):
-                    continue
-                if (re.match('^\s*$',subline)):
-                    continue
-
                 if((re.match('^\s*-?\d*\.',subline) is None) and (re.match('^\s*-?\d',subline) is None)):
                     break
                 else:
                     for coor in subline.split():
                         xcart.append(float(coor)*Angst2Bohr)
+
+abinit_fh.seek(0)
+
+while True:
+    line=abinit_fh.readline()
+    if not line: break
+    if (re.match('^\s*#',line)):
+        continue
+    if '#' in line:
+        line=re.sub('\s*#.*','',line)
+    if 'ntypat' in line:
+        continue
+    if 'typat' in line:
+        if(re.match('^\s*typat\s+\d',line) is None):
+            line=abinit_fh.readline()
+            if(re.match('^\s*\d',line) is None): 
+                print('Error reading typat variable in abinit input file')
+                sys.exit(1)
+            else:
+                typat=[int(line.split()[i]) for i in range(natom)]
+        else:
+            typat=[int(line.split()[i+1]) for i in range(natom)] 
 
 
 
@@ -507,57 +410,102 @@ rprimd=[]
 for i in range(3):
 #    print([scalecart[1],acell[i],rprim[i*3+1]])
     rprimd.append([scalecart[k]*rprim[i*3+k]*acell[i] for k in range(3)])
+    print(scalecart[0]*rprim[i*3+0]*acell[i])
 
 basis=np.array(rprimd).reshape(3,3)
 
-
-
-# Masses aray generation on znucl and typat data
-masses=[]
-for i in range (natom):
-    masses.append(float(atom_data[znucl[typat[i]-1]][3]))
-
-cvol=np.dot(basis[0],np.cross(basis[1],basis[2]))
-
-
-
 if len(xred) != natom*3:
   if len(xcart) != natom*3:
-    print('Error reading atom coordinate array')
-    print('xred/xcart')
-    print(xred)
-    print(xcart)
+    print('Error reading atom coordinate array. natom=%d' % natom)
     sys.exit(1)
   else:
     cartpos=np.array(xcart).reshape(natom,3)
+    directpos=cart2direct(cartpos,basis)
 else:
     directpos=np.array(xred).reshape(natom,3)
     cartpos=direct2cart(directpos,basis)
 
 
-# GENERATION OF DISPLACEMENTS ABINIT INPUT FILES
-#j - mode number; i -atom number
-j=args.modenum-1
-for n in range(len(ampl)):
+
+# Proceed the anaddb output file
+
+if (args.anaddb_fn == None):
+    print('Error. Now anaddb output filename provided. Exit.')
+    sys.exit(1)
+else:
+    try:
+        anaddb_fh = open(args.anaddb_fn, 'r')
+    except IOError:
+        print ("ERROR Couldn't open anaddb file, exiting...\n")
+        sys.exit(1)
+# Read frequencies data
+    freqs=[]
+    for line in anaddb_fh:
+        if 'Phonon wavevector' in line:
+            break
+    for line in anaddb_fh:
+        if 'Phonon energies in Hartree' in line:
+            break
+
+    if ((natom*3)%5 > 0):
+        nl=int(natom*3/5)+1
+    else:
+        nl=natom*3/5
+
+    i=0
+    for line in anaddb_fh:
+        if i>nl:
+            break
+
+        if re.match('^\s*-?\d+.*',line):
+            for f in line.split():
+                freqs.append(float(f)*HaTocm1)
+
+        i=i+1
+    #for i in range(natom*3):
+    #    print freqs[i]
+    for line in anaddb_fh:
+        if 'Eigendisplacements' in line:
+            break
+
+#Go through each i mode
+    shiftvecs=[]
+    shiftvec=[]
+    for i in range(natom*3):
+        for line in anaddb_fh:
+            if 'Mode number' in line:
+                m=re.match('\s*Mode number\s+(\d+)\s+Energy.*',line)
+                if (m):
+                    if (isNumeric(m.group(1))):
+                        k=1
+                        for line in anaddb_fh:
+                            if re.match('\s*\W\s*(\d+)\s*-?\d+',line):
+                                shiftvec.append([float(line.split()[j]) for j in range(2,5)])
+                                k=k+1
+                            if k>natom:
+                                shiftvecs.append(shiftvec)
+                                k=1
+                                shiftvec=[]
+                                continue
+
+
+    print('shiftvec:')
+    for i in range(len(shiftvecs)):
+        print('mode %d' % (i+1))
+        for j in range(natom):
+            print(shiftvecs[i][j])
+    comment=''
     cartshiftdm=[]
-    cartshiftdp=[]
+    for i in range(len(args.modesnum.split())):
+        for j in range(natom):
+# multiplyer 25 for backward capability with scan_alnog_mode_abinit.py
+            cartshiftdm.append(cartpos[j]-np.array(shiftvecs[int(args.modesnum.split()[i])-1][j])*float(ampl[i])*25)
+        comment+='freq = %9.4f cm-1; Delta=%6.4f ' % (freqs[int(args.modesnum.split()[i])-1],ampl[i])
 
-    print ('mode: %d freq: %8.5f' % ((j+1),frequencies[j] * factorcm))
 
-    print('====eigenvector:====')
-    for i in range(natom):
-        print(" ".join('%9.7f' % eigvecs[i*3+l,j] for l in range(3)))
-    print('delta = %f' % ampl[n])
-
-    print('shiftvector:')
-
-    for i in range(natom):
-        shiftvec=[0.0e0,0.0e0,0.0e0]
-        for l in range(3):
-            shiftvec[l]=eigvecs[i*3+l,j]*ampl[n]*sqrt(hbar/(AMU*masses[i]*abs(frequencies[j])*factorHz))*1e9*Angst2Bohr
-        cartshiftdm.append(cartpos[i]-np.array(shiftvec))
-        cartshiftdp.append(cartpos[i]+np.array(shiftvec))
-
-    abinitfn="shiftcell-%.3f.in" % ampl[n]
-
-    genabinit(abinitfn,j+1,basis,natom,typat,znucl,cartshiftdm,'freq = %9.4f cm-1; Delta=%6.4f' % ((frequencies[j] * factorcm),ampl[n]))
+    mstr="".join("m%s" % m for m in args.modesnum.split())
+    abinitfn="".join("shiftcell-%s.in" % mstr)
+#        abinitfn="shiftcell-%.3f.in" % float(a)
+    print(comment)
+    print(mstr)
+    genabinit(abinitfn,int(len(args.modesnum.split())),basis,natom,typat,znucl,cartshiftdm,comment)
