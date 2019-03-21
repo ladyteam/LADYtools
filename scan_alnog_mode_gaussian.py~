@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.4
 # -*- coding: utf-8 -*-
 #
 # This program is free software: you can redistribute it and/or modify
@@ -14,12 +14,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# The program to plot k-path for band structure using seekpath python library and input in POSCAR format
-# 
+# The program to distort geometry along selected normal mode eigenvector. Abinit input format
+#
 #
 # Author: Eugene Roginskii
 #
+# Some code was borrowed from very powerfool PHONOPY project
+# http://phonopy.sourceforge.net/
+# Copyright 2009, Atsushi Togo.
 
+def chunks(l, n):
+    if n < 1:
+        n = 1
+    return [l[i:i + n] for i in range(0, len(l), n)]
 
 def strType(var):
     try:
@@ -38,56 +45,44 @@ def isNumeric(var):
         return (True)
     return(False)
 
-# Compare vectors at a given accuracy
-# -1 -- wrong vector size
-# 0 are not equivavent
-# 1 are equivavent
-def cmpvec(vec1,vec2,accuracy):
-    if((len(vec1)<3) or (len(vec2)<3)):
-        return(-1)
-    else:
-        k=0
-        for i in range(3):
-            k+=abs(vec1[i]-vec2[i])
-        if(k>accuracy):
-            return(0)
-        else:
-            return(1)
-def direct2cart(directpos,basis):
-    cart=[]
-    for atdirect in directpos:
-        cart.append(np.dot(np.transpose(basis),atdirect))
-    return np.array(cart)
 
-def genposcar(poscarfn,modenum,freq,basis,natom,atom_types,species_atom,cartshiftdm):
-    poscar_fh=open(poscarfn,'w')
-    poscar_fh.write('Shifted geometry for %d mode, %f cm-1\n' % (modenum,freq))
-    poscar_fh.write('1.0\n')
-    for b in basis:
-        poscar_fh.write('%20.16f %20.16f %20.16f\n' % (b[0], b[1], b[2]))
-    poscar_fh.write(' '.join('%s' % s for s in atom_types) + '\n')
-    poscar_fh.write(' '.join('%d' % s for s in species_atom)+ '\n')
-    poscar_fh.write('Cartesian\n')
 
-    for cartat in cartshiftdm:
-        poscar_fh.write('%12.9f %12.9f %12.9f\n' % (cartat.tolist()[0], cartat.tolist()[1], cartat.tolist()[2]))
-def chemelemnumber(chelm,atom_data):
-    num=-1
-    for el in atom_data:
-        if(el[1]==chelm):
-            num=el[0]
-            break
-    return num
+def genxyz(fn,modenum,cartshift,comment):
+    out_fh=open(fn,'w')
+    out_fh.write('Atom positions shifted along Mode %d %s\n\n0 1\n' % (modenum,comment))
+
+    for cartat in cartshift:
+        print(cartat)
+        out_fh.write('%s    % 12.9f % 12.9f % 12.9f\n' % (cartat[0],cartat[1],cartat[2],cartat[3]))
+
 
 import numpy as np
 import re
+from math import sqrt
 import sys
 from math import pi
 from math import exp
+from shutil import move
 import os
+import datetime
+import time
 import argparse
-import spglib as spl
-import seekpath
+import xml.etree.cElementTree as etree
+
+
+mau=1822.888485
+AMU = 1.6605402e-27 # [kg]
+
+# ABINIT freq to cm-1 factor
+factorcm=716.851928469
+# ABINIT freq to HZ factor
+factorHz=21.49068e12
+
+hbar=6.6260695729e-34 #J*s
+#hbar=4.13566751691e−15 #eV*s
+EV = 1.60217733e-19 # [J]
+#
+Angst2Bohr=1.889725989
 
 atom_data = [ 
     [  0, "X", "X", 0], # 0
@@ -211,117 +206,122 @@ atom_data = [
     [118, "Uuo", "Ununoctium", 0], # 118
     ]
 
-parser = argparse.ArgumentParser(description='The program is to get primitive cell from POSCAR and plot k-path')
 
 
-parser.add_argument("-i", "--input", action="store", type=str, dest="poscar_fn", default='POSCAR', help="POSCAR filename (default POSCAR)")
+parser = argparse.ArgumentParser(description='The program to distort geometry along selected normal  mode eigenvector. Gaussian output format')
+
+
+parser.add_argument("-i", "--input", action="store", type=str, dest="gaus_fn", help="Gaussian output filename")
+parser.add_argument("-m", "--mode", action="store", type=int, dest="modenum", default=1, help="Number of mode")
+parser.add_argument("-a", "--amplitudes", action="store", type=str, dest="amplstr", default='0.1 0.25 0.5 1', 
+           help="Mode shift  amplitude, space separated")
 
 args = parser.parse_args()
 
+if (args.gaus_fn == None):
+    print('Error. No input filename was given.')
+    sys.exit(1)
+
 try:
-    poscar_fh=open(args.poscar_fn,'r')
+    gaus_fh = open(args.gaus_fn, 'r')
 except IOError:
-    print('Error opening POSCAR file')
-mult=1.0
-line=poscar_fh.readline()
-line=poscar_fh.readline()
-if(isNumeric(line)):
-    mult=float(line)
-else:
-    print('Error reading POSCAR file. Mult coefficient is not numeric')
-    sys.exit(0)
+    print("ERROR Couldn't open gaussian output file, exiting...")
+    sys.exit(1)
 
-b=[]
-for i in range(3):
-    line=poscar_fh.readline()
-    try:
-        b.append([float(line.split()[i])*mult for i in range(3)])
-    except e:
-        print('Error reading basis from POSCAR')
+
+ampl=[]
+for i in range(len(args.amplstr.split())):
+    if isNumeric(args.amplstr.split()[i]):
+        ampl.append(float(args.amplstr.split()[i]))
+    else:
+        print('Error parsing amplitudes array')
         sys.exit(1)
-if (len(b) == 3):
-    basis=np.array(b).reshape(3,3)
-else:
-    print('Error reading basis from POSCAR number of vectors not equival to 3')
-    sys.exit(1)
 
-# Read species and number of atoms
-line=poscar_fh.readline()
-species=[]
-if (not isNumeric(line.split()[0])):
-    try:
-        for sp in line.split():
-            species.append(sp)
-    except:
-        print('Error reading species array in POSCAR file')
-    line=poscar_fh.readline() 
+modenum=args.modenum
 
-specnum=[]
-if (not isNumeric(line.split()[0])):
-    print('Error reading species from POSCAR file')
-    sys.exit(1)
-else:
-    try:
-        for sp in line.split():
-            specnum.append(int(sp))
-    except:
-        print('Error reading number of species array in POSCAR file')
+natom=0
 
-if (len(species)!=len(specnum)):
-   print('Error in reading species, number of species and it\'s number not complies')
-   sys.exit(1)
-num_atom=0
-for spn in specnum:
-    num_atom+=spn
-# Read coordinates. Only direct mode implemented. Do not use cartesian!
-line=poscar_fh.readline()
-if (not 'direct' in line.lower()):
-    print('Error. Only direct positions of atom mode implemented. Make sure the keyword Direct exist in POSCAR')
-    sys.exit(1)
-dp=[]
-try:
-    for atnum in range(num_atom):
-        line=poscar_fh.readline()
-        dp.append([float(line.split()[i]) for i in range(3)]) 
-except:
-    print('Error reading atom positions from POSCAR file')
-    sys.exit(1)
-directpos=np.array(dp).ravel()
-basis=np.array(b).ravel()
+# Read Initial atomic positions
+for line in gaus_fh:
+    if("Standart orientation:" in line):
+        break
+    if("Input orientation:" in line):
+        break
 
-spec=[]
-for i in range(len(specnum)):
-    for j in range(specnum[i]):
-        for a in atom_data:
-            if(a[1]==species[i]):
-                spec.append(a[0])
-print("Input data:")
-print("Cell:")
-i=0
-for v in b:
-    print("a%d= % 9.7f % 9.7f % 9.7f" % (i,v[0],v[1],v[2]))
-    i+=1
+coor=[]
+gaus_fh.readline()
+gaus_fh.readline()
+gaus_fh.readline()
+gaus_fh.readline()
 
-print(spec)
-print('Atomic positions:')
-print(dp)
-structure=[b,dp,spec]
+for line in gaus_fh:
+    if(" ------------------" in line):
+        break
 
-res=seekpath.getpaths.get_path(structure, with_time_reversal=True, recipe='hpkot', threshold=1e-07, symprec=1e-05, angle_tolerance=-1.0)
-print("Output data:")
-print("Space group: %s" %spl.get_spacegroup(cell=(b,dp,spec), symprec=1e-5))
-print('Primitive lattice:')
-for v in res['primitive_lattice']:
-    print("a1= % 9.7f % 9.7f % 9.7f" % (v[0],v[1],v[2]))
-print('Atomic positions:')
-for i in range(len(res['primitive_positions'])):
-    print("%2d  %s" % (res['primitive_types'][i], "".join("  % 12.9f" % val for val in res['primitive_positions'][i])))
+    m=re.search('\s+(\d+)\s+(\d+)\s+(\d+)\s+(\-?\d+\.\d+)\s+(\-?\d+\.\d+)\s+(\-?\d+\.\d+)',line)
+    if(m):
+        coor.append([atom_data[int(m.group(2))][1],float(m.group(4)),float(m.group(5)),float(m.group(6))])
 
-print('Crystallographic lattice:')
-for v in res['conv_lattice']:
-    print("a1= % 9.7f % 9.7f % 9.7f" % (v[0],v[1],v[2]))
-print('Points:')
-for pt in res['point_coords'].items():
-    print(pt)
-print('PATH:')
-print (res['path'])
+print(coor)
+
+eigen=[]
+# Read Eigenvalues and Eigenvectors
+# skip till the line Harmonic frequencies (cm**-1), IR intensities (KM/Mole), Raman scattering 
+for line in gaus_fh:
+    if("Harmonic frequencies (cm**-1)," in line):
+        break
+stop=0
+for j in range(len(coor)):
+    if (stop==1):
+        break
+    freq=[]
+    e=[]
+    atnum=1
+    for line in gaus_fh:
+        if("Harmonic frequencies (cm**-1)," in line):
+            stop=1
+            break
+        if ("Frequencies" in line):
+            for i in range(len(line.split())-2):
+                freq.append(float(line.split()[i+2]))
+            continue
+        m=re.search('\s+(\d+)\s+(\d+)\s+((\-?\d+\.\d+\s+\-?\d+\.\d+\s+\-?\d+\.\d+\s*)+)',line)
+        if(m):
+            buf=[]
+            for k in range(int(len(m.group(3).split())/3)):
+                buf.append([float(m.group(3).split()[l]) for l in range(3*k,3*(k+1))])
+
+            e.append([buf[k] for k in range(len(buf))])
+            atnum+=1
+        if(atnum>len(coor)):
+# iteration on each set of mode (3 max) and then each atoms DISPLACEMENTS
+            for k in range(len(freq)):
+                etmp=[]
+                for l in range(len(coor)):
+                    etmp.append(e[l][k])
+                eigen.append([freq[k],etmp])
+            break
+#    for e in eigen:
+#        print(e[0])
+#        for ee in e[1]:
+#            print(ee)
+
+
+# GENERATION OF DISPLACEMENTS XYZ INPUT FILES
+#j - mode number; i -atom number
+j=args.modenum-1
+for n in range(len(ampl)):
+    cartshift=[]
+
+    for i in range(len(coor)):
+        shiftvec=[0.0e0,0.0e0,0.0e0]
+#        print(eigen[j][1][i])
+        for l in range(3):
+            shiftvec[l]=ampl[n]*eigen[j][1][i][l]
+
+        cartshift.append([coor[i][0],coor[i][1]-shiftvec[0], coor[i][2]-shiftvec[1], coor[i][3]-shiftvec[2]])
+
+    outfn="shiftcell-%.3f.xyz" % ampl[n]
+
+    genxyz(outfn,j+1,cartshift,'freq = %9.4f cm-1; Delta=%6.4f' % ((eigen[j][0]),ampl[n]))
+

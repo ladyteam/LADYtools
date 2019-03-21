@@ -53,7 +53,7 @@ def genxyz(fn,modenum,cartshift,comment):
 
     for cartat in cartshift:
         print(cartat)
-        out_fh.write('%s %12.9f %12.9f %12.9f\n' % (cartat[0],cartat[1],cartat[2],cartat[3]))
+        out_fh.write('%s    % 12.9f % 12.9f % 12.9f\n' % (cartat[0],cartat[1],cartat[2],cartat[3]))
 
 
 import numpy as np
@@ -243,6 +243,8 @@ natom=0
 
 # Read Initial atomic positions
 for line in gaus_fh:
+    if("Standard orientation:" in line):
+        break
     if("Input orientation:" in line):
         break
 
