@@ -55,10 +55,12 @@ import argparse
 Ha2Ev=27.2107
 Angstr2Bohr=1.8897261245650618
 
-parser = argparse.ArgumentParser(description='This program is to extract Force Constants from abinit output file in PHONOPY format file')
+parser = argparse.ArgumentParser(description='''This program is to extract Force Constants from abinit output file in PHONOPY format file.
+Please note, the input for the script is the output of abinit calculations, and the number of dataset is the one with rfphon activated.
+For example if in input file  rfphon3=1 then the dataset is 3''')
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="abinit_fn",  help="Abinit output filename")
-parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='FORCE_CONSTANTS', help="Output filename in yaml format")
+parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='FORCE_CONSTANTS', help="Output filename in pnonopy format. Default is FORCE_CONSTANTS")
 parser.add_argument("-d", "--dset", action="store", type=int, dest="dset", default=0, help="Dataset number to extract dynmat from")
 
 args = parser.parse_args()
