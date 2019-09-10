@@ -86,7 +86,7 @@ from math import pi
 from math import exp
 import os
 import argparse
-import spglib as spl
+import phonopy.structure.spglib as spl
 import seekpath
 
 atom_data = [ 
