@@ -24,9 +24,9 @@
 # http://www.xcrysden.org/doc/XSF.html
 #
 #  Instructions to use with Jmol:
-# 1. Open cube file
+# 1. Run Jmol
 # 2. Open Jmol console (File-> console)
-# 3. Run the command:  isosurface delete
+# 3. Run the command:  load "filename.cube"
 # 4. Run the command:  isosurface s1 sign cyan yellow cutoff 1 "filename.cube" color translucent 0.45
 # where filename.cube is the filename given by parameter .cube
 
