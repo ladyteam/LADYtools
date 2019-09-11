@@ -27,7 +27,7 @@
 # 1. Run Jmol
 # 2. Open Jmol console (File-> console)
 # 3. Run the command:  load "filename.cube"
-# 4. Run the command:  isosurface s1 sign cyan yellow cutoff 1 "filename.cube" color translucent 0.45
+# Additionaly run the command:  isosurface s1 sign cyan yellow cutoff 1 "filename.cube" color translucent 0.45
 # where filename.cube is the filename given by parameter .cube
 
 
@@ -398,7 +398,7 @@ if(args.tozip):
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
 
-    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']'
+    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'
     # Write comments
     cube_fh.write('%s %s\n' % (args.comment,jmols))
     cube_fh.write('%s %s\n' % ('jmolscript: ',jmols))
@@ -437,7 +437,7 @@ else:
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
 
-    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']'
+    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'
     # Write comments
     buf='%s %s\n' % (args.comment,jmols)
     cube_fh.write(buf.encode('latin-1'))
