@@ -62,6 +62,7 @@ def cart2direct(cartpos,basis):
 
 import numpy as np
 import re
+import os
 import sys
 import argparse
 import gzip
@@ -201,6 +202,7 @@ parser = argparse.ArgumentParser(description='Data file in xsf format to CUBE co
 parser.add_argument("-i", "--input", action="store", type=str, dest="xsf_fn",  help="Input filename")
 parser.add_argument("-o", "--output", action="store", type=str, dest="cube_fn",   help="Output filename")
 parser.add_argument("-c", "--comment", action="store", type=str, dest="comment",  default="", help="Comment to be added into output file")
+parser.add_argument("-s", "--supercell", action="store", type=str, dest="scell",  default="444 555 1", help="Supercell (SS) size for automatic SS generation in Jmol")
 parser.add_argument("-z", "--gzip", action="store_false", dest="tozip", help="Compress output. Warning unitcell data  won't be loaded in Jmol")
 
 args = parser.parse_args()
@@ -213,6 +215,14 @@ try:
     xsf_fh = open(args.xsf_fn, 'r')
 except IOError:
     print("ERROR Couldn't open input file, exiting...\n")
+    sys.exit(1)
+
+if (args.cube_fn == None):
+    args.cube_fn=os.path.join(os.path.dirname(args.xsf_fn),'%s.cube' % os.path.splitext(args.xsf_fn)[0])
+    print('Warning. No output filename was given. Will write to new one with .cube extension')
+
+if(os.path.isfile(args.cube_fn)):
+    print('Filename %s already exist. Remove old version and restart the program.' % args.cube_fn)
     sys.exit(1)
 
 for line in xsf_fh:
@@ -288,6 +298,9 @@ else:
     print('Error. No primcoord section found.')
     sys.exit(1)
 
+#jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
+#print(jmols)
+
 # Read 3d DATAGRID data
 
 for line in xsf_fh:
@@ -348,9 +361,6 @@ except:
     print('Error reading spanning vector')
     sys.exit(1)
 
-print('header')
-#buf='%s %s\n' % ('args.comment','jmols')
-#print(buf.encode('latin-1'))
 #Read data from file
 value=[]
 
@@ -386,10 +396,6 @@ for k in range(npntz):
 #
 # Non Zipped
 if(args.tozip):
-    if (args.cube_fn == None):
-        print('Error. No output filename was given.')
-        sys.exit(1)
-
     try:
         cube_fh = open(args.cube_fn, 'w')
     except IOError:
@@ -397,8 +403,8 @@ if(args.tozip):
         sys.exit(1)
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
+    jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
 
-    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'
     # Write comments
     cube_fh.write('%s %s\n' % (args.comment,jmols))
     cube_fh.write('%s %s\n' % ('jmolscript: ',jmols))
@@ -425,10 +431,6 @@ if(args.tozip):
                 n+=1
 # Zipped
 else:
-    if (args.cube_fn == None):
-        print('Error. No output filename was given.')
-        sys.exit(1)
-
     try:
         cube_fh = gzip.open(args.cube_fn, 'wb')
     except IOError:
@@ -436,8 +438,8 @@ else:
         sys.exit(1)
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
+    jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
 
-    jmols='load "" {444 555 1} UNITCELL [' + ','.join('%8.7f' % b for b in basis.flatten()) + ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'
     # Write comments
     buf='%s %s\n' % (args.comment,jmols)
     cube_fh.write(buf.encode('latin-1'))
