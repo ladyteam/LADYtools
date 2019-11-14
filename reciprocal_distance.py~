@@ -18,15 +18,8 @@
 # space between points given in separate file. An finally the program suggest the Number
 # of points in each sector to preserve the scale factor.
 #
-# Example of points file content:
-#  0.000  0.000  0.000   G
-#  0.000  0.500  0.000   X
-#  0.500  0.500  0.000   M
-#  0.000  0.000  0.000   G
-#  0.000  0.000  0.500   Z
-#  0.000  0.500  0.500   R
-#  0.500  0.500  0.500   A
-#  0.000  0.000  0.500   Z
+# 
+#
 # Author: Eugene Roginskii
 
 

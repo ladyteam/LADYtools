@@ -201,9 +201,11 @@ parser = argparse.ArgumentParser(description='Data file in xsf format to CUBE co
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="xsf_fn",  help="Input filename")
 parser.add_argument("-o", "--output", action="store", type=str, dest="cube_fn",   help="Output filename")
-parser.add_argument("-c", "--comment", action="store", type=str, dest="comment",  default="", help="Comment to be added into output file")
-parser.add_argument("-s", "--supercell", action="store", type=str, dest="scell",  default="444 555 1", help="Supercell (SS) size for automatic SS generation in Jmol")
+parser.add_argument("-t", "--comment", action="store", type=str, dest="comment",  default="", help="Comment to be added into output file")
+parser.add_argument("-s", "--supercell", action="store", type=str, dest="scell",  default="444 555 1", help="Supercell size for automatic supercell generation in Jmol")
 parser.add_argument("-z", "--gzip", action="store_false", dest="tozip", help="Compress output. Warning unitcell data  won't be loaded in Jmol")
+parser.add_argument("-c", "--cutoff", action="store", type=float, dest="cutoff",  default=1.0, help="Isosurface cutoff")
+
 
 args = parser.parse_args()
 
@@ -297,9 +299,6 @@ if ('primcoord' in line.lower()):
 else:
     print('Error. No primcoord section found.')
     sys.exit(1)
-
-#jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
-#print(jmols)
 
 # Read 3d DATAGRID data
 
@@ -403,7 +402,7 @@ if(args.tozip):
         sys.exit(1)
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
-    jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
+    jmols=''.join('%s%s%s%s%s%f%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff ', args.cutoff, ' "" color translucent 0.45'))
 
     # Write comments
     cube_fh.write('%s %s\n' % (args.comment,jmols))
@@ -438,7 +437,7 @@ else:
         sys.exit(1)
     # Generate jmolscript string
     basis=np.array(primvec).reshape(3,3)
-    jmols=''.join('%s%s%s%s%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff 1 "" color translucent 0.45'))
+    jmols=''.join('%s%s%s%s%s%f%s' % ('load "" {', args.scell, '} UNITCELL [', ','.join('%8.7f' % b for b in basis.flatten()), ']; isosurface s1 sign cyan yellow cutoff ', args.cutoff, ' "" color translucent 0.45'))
 
     # Write comments
     buf='%s %s\n' % (args.comment,jmols)

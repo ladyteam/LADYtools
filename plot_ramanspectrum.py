@@ -31,11 +31,17 @@ def Gauss(y0,x,A,w,xc):
 # $hkt=1.0545919/(1.3806221*$T)*10**(-11)
 # $C=($nuex-$nu)**4/(  (1 - exp(-1*$hkt*$nu*2*$pi*$cs)) * 30*$nu );
 def ramanpref(wl,wi,T):
-    hkc=-1.4394
-    cm1toau=4.55634*10**-6
-    c=137.036
+#    hkc=-1.4394
+    temp2au=0.0000031668    # 1K in Ha
+    cm1toau=4.55634  # 1cm-1 in Ha is 4.55634*10**-6, hence the cubic power is of order 10^-18 it is close to accuracy limit
+                     # That's why the E-06 is skipped in the last multiplyer.
+    c=137.036 # atomic units
+#    print( 2*pi*((((wl-wi)/c)**4)/wi) * ( 1.0 + 1.0 /(exp((wi*cm1toau*1E-06)/(T*temp2au)) - 1.0))   * cm1toau**3 )
+#    print(pi*((((wl-wi)/c)**4)/wi))
+#    print (((((wl-wi)**4) / (2*wi*c**4))*cm1toau**3)/(exp(wi/T*cm1toau/temp2au)) )
     try:
-        return ( ((wl-wi)**4 /  ((1.0 - exp( hkc*wi/T ))* wi))/(2*c**4))*cm1toau**3
+#        return ( ((wl-wi)**4) / (2*wi*c**4) * ( 1.0 + 1.0 /(exp(wi/T*cm1toau/temp2au) - 1.0))   * cm1toau**3  )
+        return ( 2*pi*((((wl-wi)/c)**4)/wi) * ( 1.0 + 1.0 /(exp((wi*cm1toau*1E-06)/(T*temp2au)) - 1.0))   * cm1toau**3  )
     except:
         print("error in ramanpref wi=%f T=%f" % (wi,T))
         return(0)
@@ -133,9 +139,12 @@ for i in range(len(xc)):
 #Scan whole range of spectra
     for k in range(np):
         if(args.temp == 0):
+            print("Warning. The temperature factor is ignored.")
             y[k]=y[k]+Lorenz(0,x[k],xc[i],w[i],A[i])*args.mult
+
         else:
-            y[k]=y[k]+Lorenz(0,x[k],xc[i],w[i],A[i])*ramanpref(nulaser,xc[i],args.temp)
+            y[k]=y[k]+Lorenz(0,x[k],xc[i],w[i],A[i]*ramanpref(nulaser,xc[i],args.temp)*args.mult)
+
 if (args.norm):
     max=0
     for i in range(np):
@@ -143,8 +152,9 @@ if (args.norm):
             max=abs(y[i])
     for i in range(np):
         y[i]=y[i]/max
-
+else:
+    output_fh.write("# Raman spectrum. The units is %e a.u., Temperature=%f K, nu_exc=%f\n" % (1e-18/args.mult,args.temp,args.lexc))
 if (args.comment):
     output_fh.write(args.comment+'\n')
 for i in range(np):
-    output_fh.write('% 10.7f\t% 14.10f\n' % (x[i],y[i]*args.mult))
+    output_fh.write('% 10.7f\t% 14.10f\n' % (x[i],y[i]))
