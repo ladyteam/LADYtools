@@ -343,8 +343,6 @@ for v in res['conv_lattice']:
     print("a1= % 9.7f % 9.7f % 9.7f" % (v[0],v[1],v[2]))
 print('Points:')
 for pt in res['point_coords'].items():
-    if("gamma" in pt[0].lower()):
-        continue
-    print("%s  %3s" % (" ".join("% 9.6f" % p for p in pt[1]),pt[0]))
+    print(pt)
 print('PATH:')
 print (res['path'])
