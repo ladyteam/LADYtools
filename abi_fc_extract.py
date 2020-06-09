@@ -70,17 +70,17 @@ if (args.dset==0):
     sys.exit(1)
 
 if (args.abinit_fn == None):
-    print('Error. No Abinit input filename was given.')
+    print('Error. No Abinit output filename was given.')
     sys.exit(1)
 
 try:
     abinit_fh = open(args.abinit_fn, 'r')
 except IOError:
-    print "ERROR Couldn't open abinit file, exiting...\n"
+    print('ERROR opening abinit output file, exiting...')
     sys.exit(1)
 
 for line in abinit_fh:
-    if 'Echo of variables that govern the present computation' in line:
+    if ('Echo of variables that govern the present computation' in line):
         break
 natom=0
 for line in abinit_fh:
@@ -102,7 +102,7 @@ abinit_fh.seek(0)
 # If variable is provided loop through DATASETS
 if(args.dset > 0):
     for line in abinit_fh:
-        if 'Echo of variables that govern the present computation' in line:
+        if ('Echo of variables that govern the present computation') in line:
             break
 
     for line in abinit_fh:
@@ -118,7 +118,7 @@ for line in abinit_fh:
         if (re.match('^=+\s*DATASET\s+(\d+).*',line)):
             print('No dynmat in DATASET %d' % args.dset)
             sys.exit(1)
-    if 'dynamical matrix, in cartesian coordinates' in line.lower():
+    if ('dynamical matrix, in cartesian coordinates' in line.lower()):
         break
 
 
@@ -141,7 +141,7 @@ for line in abinit_fh:
 try:
     out_fh = open(args.out_fn, 'w')
 except IOError:
-    print "ERROR Couldn't open output file for writing, exiting...\n"
+    print ("ERROR opening output file for writing failed, exiting...)"
     sys.exit(1)
 
 out_fh.write('%d\n' % natom)
