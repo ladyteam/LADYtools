@@ -141,7 +141,7 @@ for line in abinit_fh:
 try:
     out_fh = open(args.out_fn, 'w')
 except IOError:
-    print ("ERROR opening output file for writing failed, exiting...)"
+    print ("ERROR opening output file for writing failed, exiting...")
     sys.exit(1)
 
 out_fh.write('%d\n' % natom)
