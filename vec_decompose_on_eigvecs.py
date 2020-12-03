@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# The program to plot k-path for band structure using seekpath python library and input in POSCAR format
-# 
-#
-# Author: Eugene Roginskii
-#
+'''
+The program for decomposition of the given vector in
+cartesian coordinate on Dynamical matrix eigenvectors basis.
+'''
 
+def chunks(l, n):
+    if n < 1:
+        n = 1
+    return [l[i:i + n] for i in range(0, len(l), n)]
 
 def strType(var):
     try:
@@ -38,39 +27,46 @@ def isNumeric(var):
         return (True)
     return(False)
 
-# Compare vectors at a given accuracy
-# -1 -- wrong vector size
-# 0 are not equivavent
-# 1 are equivavent
-def cmpvec(vec1,vec2,accuracy):
-    if((len(vec1)<3) or (len(vec2)<3)):
-        return(-1)
-    else:
-        k=0
-        for i in range(3):
-            k+=abs(vec1[i]-vec2[i])
-        if(k>accuracy):
-            return(0)
-        else:
-            return(1)
 def direct2cart(directpos,basis):
     cart=[]
     for atdirect in directpos:
         cart.append(np.dot(np.transpose(basis),atdirect))
     return np.array(cart)
 
-def genposcar(poscarfn,modenum,freq,basis,natom,atom_types,species_atom,cartshiftdm):
-    poscar_fh=open(poscarfn,'w')
-    poscar_fh.write('Shifted geometry for %d mode, %f cm-1\n' % (modenum,freq))
-    poscar_fh.write('1.0\n')
-    for b in basis:
-        poscar_fh.write('%20.16f %20.16f %20.16f\n' % (b[0], b[1], b[2]))
-    poscar_fh.write(' '.join('%s' % s for s in atom_types) + '\n')
-    poscar_fh.write(' '.join('%d' % s for s in species_atom)+ '\n')
-    poscar_fh.write('Cartesian\n')
+def readvec(fn):
+    lattice=np.zeros(9)
 
-    for cartat in cartshiftdm:
-        poscar_fh.write('%12.9f %12.9f %12.9f\n' % (cartat.tolist()[0], cartat.tolist()[1], cartat.tolist()[2]))
+    xcart=[]
+    xatom=[]
+    atsym=[]
+    try:
+        in_fh = open(fn, 'r')
+    except IOError:
+        print("ERROR Couldn't open input files, exiting...")
+        sys.exit(1)
+
+    line=in_fh.readline()
+    natom=int(line.split()[0])
+    line=in_fh.readline()
+
+    for i in range(9):
+        lattice[i]=float(line.split('[')[1].split(',')[i].split(']')[0])
+
+    n=0
+    for line in in_fh:
+        if(n>natom):
+            break
+        if(len(line.split())>=3):
+            atsym.append(line.split()[0])
+            xatom.append([float(line.split()[i+1]) for i in range(3)])
+            xcart.append([float(line.split()[i+4]) for i in range(3)])
+            n+=1
+    if(len(xcart)!=natom):
+        print('Error. Mismatch in size of atom coord and number of atoms')
+
+    return([lattice.reshape(3,3), atsym, np.array(xatom).reshape(natom,3), np.array(xcart).reshape(natom,3)])
+
+
 def chemelemnumber(chelm,atom_data):
     num=-1
     for el in atom_data:
@@ -81,13 +77,27 @@ def chemelemnumber(chelm,atom_data):
 
 import numpy as np
 import re
+from math import sqrt
+from math import ceil
 import sys
 from math import pi
-from math import exp
+from shutil import move
 import os
+import datetime
+import time
 import argparse
-import spglib as spl
-import seekpath
+import xml.etree.cElementTree as etree
+import yaml
+
+delta=1
+AMU = 1.6605402e-27 # [kg]
+Angst2Bohr=1.889725989
+#factorcm=716.851928469
+#VaspToTHz = sqrt(EV/AMU)/Angstrom/(2*pi)/1e12 # [THz] 15.633302 
+hbar=6.6260695729e-34 #J*s
+hbar2AMU=hbar/AMU
+#hbar=4.13566751691e-15 #eV*s
+EV = 1.60217733e-19 # [J]
 
 atom_data = [ 
     [  0, "X", "X", 0], # 0
@@ -113,7 +123,7 @@ atom_data = [
     [ 20, "Ca", "Calcium", 40.078], # 20
     [ 21, "Sc", "Scandium", 44.955912], # 21
     [ 22, "Ti", "Titanium", 47.867], # 22
-    [ 23, "V", "Vanadium", 50.9415], # 23
+    [ 23, "V", "Vanadium", 50.9415], # 23z
     [ 24, "Cr", "Chromium", 51.9961], # 24
     [ 25, "Mn", "Manganese", 54.938045], # 25
     [ 26, "Fe", "Iron", 55.845], # 26
@@ -211,140 +221,116 @@ atom_data = [
     [118, "Uuo", "Ununoctium", 0], # 118
     ]
 
-parser = argparse.ArgumentParser(description='The program is to get primitive cell from POSCAR and plot k-path')
 
+parser = argparse.ArgumentParser(description='Script to decompose LO modes by TO ones')
 
-parser.add_argument("-i", "--input", action="store", type=str, dest="poscar_fn", default='POSCAR', help="POSCAR filename (default POSCAR)")
-
+parser.add_argument("-v", "--vec", action="store", type=str, dest="vec_fn", help="filename with Vector to decompose (xyz format)")
+parser.add_argument("-d", "--dynmat", action="store", type=str, dest="dynmat_fn", default='qpoints.yaml', help="Dynamic matrix in yaml format")
+parser.add_argument("-c", "--cutoff", action="store", type=float, dest="cut", default=0.001, help="Minimal weight of mode eigenvector")
+parser.add_argument("-f", "--factor", action="store", type=float, dest="factorcm", default=521.47083, help="Frequency factor. Default is " +
+                                                             "521.47083 (convert to cm-1 when VASP calculator used). Use 716.851928469 for ABINIT ")
+parser.add_argument("-a", "--ampl", action="store", type=float, dest="ampl", default=1, help="Amplitude for shift vector")
+parser.add_argument("-o", "--out", action="store", type=str, dest="out_fn", help="filename with resulted distorted structure (xyz format)")
 args = parser.parse_args()
 
+
+lattice, atsym, xatom, xcart = readvec(args.vec_fn)
+
+natom = len(xcart)
+
 try:
-    poscar_fh=open(args.poscar_fn,'r')
-except IOError:
-    print('Error opening POSCAR file')
-mult=1.0
-line=poscar_fh.readline()
-line=poscar_fh.readline()
-if(isNumeric(line)):
-    mult=float(line)
-else:
-    print('Error reading POSCAR file. Mult coefficient is not numeric')
+    qdata = yaml.load(open(args.dynmat_fn),Loader=yaml.CSafeLoader)
+    dynmat = []
+    dynmat_data = qdata['phonon'][0]['dynamical_matrix']
+    for row in dynmat_data:
+        vals = np.reshape(row, (-1, 2))
+        dynmat.append(vals[:, 0] + vals[:, 1] * 1j)
+
+    dm = np.array(dynmat, dtype='double').transpose()
+
+    eigvals, eigvecs, = np.linalg.eigh(dm)
+except:
+    print('Filed to read DYNAMICAL MATRIX')
     sys.exit(0)
 
-b=[]
-for i in range(3):
-    line=poscar_fh.readline()
-    try:
-        b.append([float(line.split()[i])*mult for i in range(3)])
-    except e:
-        print('Error reading basis from POSCAR')
-        sys.exit(1)
-if (len(b) == 3):
-    basis=np.array(b).reshape(3,3)
-else:
-    print('Error reading basis from POSCAR number of vectors not equival to 3')
-    sys.exit(1)
 
-# Read species and number of atoms
-line=poscar_fh.readline()
-species=[]
-if (not isNumeric(line.split()[0])):
-    try:
-        for sp in line.split():
-            species.append(sp)
-    except:
-        print('Error reading species array in POSCAR file')
-    line=poscar_fh.readline() 
+#eigvals, evecs = np.linalg.eigh(dm)
+#eigvals = eigvals.real
+frequencies=[]
+displ=[]
+masses=[]
 
-specnum=[]
-if (not isNumeric(line.split()[0])):
-    print('Error reading species from POSCAR file')
-    sys.exit(1)
-else:
-    try:
-        for sp in line.split():
-            specnum.append(int(sp))
-    except:
-        print('Error reading number of species array in POSCAR file')
+for el in atsym:
+     elnum=chemelemnumber(el,atom_data)
+     masses.append(atom_data[elnum][3])
 
-if (len(species)!=len(specnum)):
-   print('Error in reading species, number of species and it\'s number not complies')
-   sys.exit(1)
-num_atom=0
-for spn in specnum:
-    num_atom+=spn
-# Read coordinates. Only direct mode implemented. Do not use cartesian!
-line=poscar_fh.readline()
-if (not 'direct' in line.lower()):
-    print('Error. Only direct positions of atom mode implemented. Make sure the keyword Direct exist in POSCAR')
-    sys.exit(1)
-dp=[]
+#print('***eigvecs***')
+#for e in eigvecs:
+#    print(e)
+
+#print('***masses***')
+#print(masses)
+
+frequencies=np.sqrt(np.abs(eigvals)) * np.sign(eigvals)
+
+print("Mode frequencies in cm-1")
+for freq in frequencies:
+    nmod=frequencies.tolist().index(freq)+1
+    print("%2d % 9.6f" %(nmod,freq*args.factorcm))
+
+cvol=np.dot(lattice[0],np.cross(lattice[1],lattice[2]))
+
+for j in range(natom*3):
+    for i in range(natom):
+        for l in range(3):
+            displ.append(eigvecs[i*3+l][j]*sqrt(1/(masses[i]))/Angst2Bohr)
+
+displ=np.array(displ).reshape(natom*3,natom*3)
+#print("*** Mass weighted eigvec ***")
+#for d in displ:
+#    print(d)
+
+c=np.zeros(natom*3)
+
+print('Decomposition:')
+for i in range(natom*3):
+    c[i]=np.dot(displ[i],xcart.flatten())
+
+cnorm=c.max()
+
+modnums=[]
+
+for i in range(natom*3):
+    if (abs(c[i]/cnorm)>args.cut):
+        modnums.append(i)
+        print('Mode number %d with freq %f cm-1, weight=%f' % ((i+1),frequencies[i]*args.factorcm,c[i]/cnorm))
+
+shiftvec=np.zeros(natom*3)
+for i in range(len(modnums)):
+    shiftvec+=displ[modnums[i]]*c[modnums[i]]
+
+shiftvec.reshape(natom,3)
+#for v in shiftvec.reshape(natom,3):
+#    print(v)
+
+xcart=shiftvec.reshape(natom,3)*args.ampl
+xfin=xatom+xcart*args.ampl
+
 try:
-    for atnum in range(num_atom):
-        line=poscar_fh.readline()
-        dp.append([float(line.split()[i]) for i in range(3)]) 
-except:
-    print('Error reading atom positions from POSCAR file')
+    out_fh = open(args.out_fn, 'w')
+except IOError:
+    print("ERROR Couldn't open output file, exiting...")
     sys.exit(1)
-directpos=np.array(dp).ravel()
-basis=np.array(b).ravel()
 
-spec=[]
-for i in range(len(specnum)):
-    for j in range(specnum[i]):
-        for a in atom_data:
-            if(a[1]==species[i]):
-                spec.append(a[0])
-print("Input data:")
-print("Cell:")
-i=0
-for v in b:
-    print("a%d= % 9.7f % 9.7f % 9.7f" % (i,v[0],v[1],v[2]))
-    i+=1
-
-print(spec)
-print('Atomic positions:')
-print(dp)
-structure=[b,dp,spec]
-
-res=seekpath.getpaths.get_path(structure, with_time_reversal=True, recipe='hpkot', threshold=1e-07, symprec=1e-05, angle_tolerance=-1.0)
-print("Output data:")
-print("Space group: %s" %spl.get_spacegroup(cell=(b,dp,spec), symprec=1e-5))
-print('Primitive lattice:')
-
-b=[]
-for v in res['primitive_lattice']:
-    print("a1= % 9.7f % 9.7f % 9.7f" % (v[0],v[1],v[2]))
-    b.append([v[0],v[1],v[2]])
-
-basis=np.array(b).reshape(3,3)
-cvol=np.dot(basis[0],np.cross(basis[1],basis[2]))
-b1=np.cross(basis[1],basis[2])/cvol*pi
-b2=np.cross(basis[2],basis[0])/cvol*pi
-b3=np.cross(basis[0],basis[1])/cvol*pi
-
-print('unit cell volume=%7.4f' % cvol)
-print('Reciprocal basis pi units:')
-print(b1)
-print(b2)
-print(b3)
-print('Reciprocal basis reciprocal units:')
-print(b1/pi)
-print(b2/pi)
-print(b3/pi)
+out_fh.write("%d\n" % len(xfin))
+out_fh.write('load "" {1 1 1} UNITCELL ['+
+                        ','.join('%8.7f' % b for b in lattice.flatten()) + ']\n')
 
 
-print('Atomic positions:')
-for i in range(len(res['primitive_positions'])):
-    print("%2d  %s" % (res['primitive_types'][i], "".join("  % 12.9f" % val for val in res['primitive_positions'][i])))
+for i in range(len(xfin)):
+    out_fh.write("%2s " % atsym[i])
+    out_fh.write(" ".join("% 12.9f " % x for x in xfin[i]))
+    out_fh.write(" ".join("% 12.9f " % x for x in xcart[i]*args.ampl))
+#    out_fh.write("#%12.9f" % np.linalg.norm(xcart[i])) 
+    out_fh.write("\n")
 
-print('Crystallographic lattice:')
-for v in res['conv_lattice']:
-    print("a1= % 9.7f % 9.7f % 9.7f" % (v[0],v[1],v[2]))
-print('Points:')
-for pt in res['point_coords'].items():
-    if("gamma" in pt[0].lower()):
-        continue
-    print("%s  %3s" % (" ".join("% 9.6f" % p for p in pt[1]),pt[0]))
-print('PATH:')
-print (res['path'])

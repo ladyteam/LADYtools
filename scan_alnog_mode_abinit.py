@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # This program is free software: you can redistribute it and/or modify
@@ -214,7 +214,7 @@ atom_data = [
     [ 85, "At", "Astatine", 0], # 85
     [ 86, "Rn", "Radon", 0], # 86
     [ 87, "Fr", "Francium", 0], # 87
-    [ 88, "Ra", "Radium", 0], # 88
+    [ 88, "Ra", "Radium", 226.0254], # 88
     [ 89, "Ac", "Actinium", 0], # 89
     [ 90, "Th", "Thorium", 232.03806], # 90
     [ 91, "Pa", "Protactinium", 231.03588], # 91
