@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,8 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # This program calculates reciprocal vectors and plots the distances in reciprocal
-# space between points given in separate file. An finally the program suggest the Number
-# of points in each sector to preserve the scale factor.
+# space between points given in separate file. Then the program suggest the Number
+# of points in each sector to preserve the scale factor and plots the points along 
+# the given path.
 #
 # Example of points file content:
 #  0.000  0.000  0.000   G
@@ -29,7 +30,15 @@
 #  0.000  0.000  0.500   Z
 # Author: Eugene Roginskii
 
+def kpt_prt(kfrom,kto,npnt):
+    dh=(kto[0]-kfrom[0])/npnt
+    dk=(kto[1]-kfrom[1])/npnt
+    dl=(kto[2]-kfrom[2])/npnt
 
+    for i in range(npnt+1):
+        print("% 6.4f % 6.4f % 6.4f % 6.4f" % (kfrom[0]+dh*i, 
+                                               kfrom[1]+dk*i, 
+                                               kfrom[2]+dl*i, 1  ))
 import sys
 from math import pi
 import numpy as np
@@ -56,7 +65,7 @@ if (args.abinit_fn == None):
 try:
     abinit_fh = open(args.abinit_fn, 'r')
 except IOError:
-    print "ERROR Couldn't open abinit file, exiting...\n"
+    print("ERROR Couldn't open abinit file, exiting...")
     sys.exit(1)
 
 # abinit input file process
@@ -137,7 +146,7 @@ if (args.points_fn == None):
 try:
     points_fh = open(args.points_fn, 'r')
 except IOError:
-    print "ERROR Couldn't open file with points data, exiting...\n"
+    print("ERROR Couldn't open file with points data, exiting...")
     sys.exit(1)
 
 points=[]
@@ -173,6 +182,12 @@ for d in dist:
         mind=d
 
 mult=mind/float(args.minpt)
+
+print('The points along path:')
+for i in range(len(points)-1):
+    npt=dist[i]/mult
+    print("! %s" % points[i][1])
+    kpt_prt(points[i][0],points[i+1][0], int(round(npt)))
 
 print('Suggested number in each section is:')
 ntot=1
