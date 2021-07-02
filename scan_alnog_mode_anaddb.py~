@@ -446,8 +446,8 @@ else:
                 freqs.append(float(f)*HaTocm1)
 
         i=i+1
-#    for i in range(natom*3):
-#        print(freqs[i])
+    for i in range(natom*3):
+        print(freqs[i])
     for line in anaddb_fh:
         if 'Eigendisplacements' in line:
             break

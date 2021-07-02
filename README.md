@@ -24,3 +24,4 @@ for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail
     the basis of eigenvectors (mass weighted) of the Dynamical matrix stored in qpoints.yaml file (PHONOPY format).
 13. eigvec2xyz_vasp_singlemode.py -- Extract atomic displacements for a given mode from Dynamical matrix stored in qpoints.yaml file (PHONOPY format).
 14. reciprocal_distance.py -- Get distance in reciprocal space and generate k-points
+15. fc2xyz.py -- create file with atomic displacements for each phonon mode using force contants in PHONOPY format.
