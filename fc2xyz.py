@@ -53,6 +53,8 @@ parser.add_argument("-m", "--mult", action="store", type=int, dest="mult", defau
 parser.add_argument('--nac', dest='nac', action='store_false')
 parser.add_argument("--factor", action="store", type=float, dest="factor", 
                      default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit)")
+parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
+                      help="Direction of q-vector for non-analytical term")
 
 Angst2Bohr=1.889725989
 
@@ -120,7 +122,11 @@ except IOError:
     print("ERROR Couldn't open output file for writing, exiting...\n")
     sys.exit(1)
 
-dynmat_data = ph.get_dynamical_matrix_at_q([0,0,0])
+if(args.nacqdir):
+    ph.run_qpoints([[0, 0, 0]], nac_q_direction=[int(l) for l in args.nacqdir.split()],with_dynamical_matrices=True)
+    dynmat_data=ph.get_qpoints_dict()['dynamical_matrices'][0]
+else:
+    dynmat_data = ph.get_dynamical_matrix_at_q([0,0,0])
 
 dynmat = []
 #i = 0
