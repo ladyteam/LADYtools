@@ -46,13 +46,13 @@ parser = argparse.ArgumentParser(description='Script to generate atomic displace
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="in_fn",  help="Input filename")
 parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='abinit.xyz', help="Output filename")
-parser.add_argument("-c", "--calc", action="store", type=str, dest="calc",  help="Calculator (abinit,vasp,qe,castep)")
+parser.add_argument("-c", "--calc", action="store", type=str, dest="calc",  help="Calculator (abinit,vasp,qe,castep,cp2k)")
 parser.add_argument("-f", "--fc", action="store", type=str, dest="fc_fn", default='FORCE_CONSTANTS', help="Force constants filename")
 parser.add_argument("-s", "--shift", action="store", type=str, dest="shift_fn",  help="Shift positions filename")
 parser.add_argument("-m", "--mult", action="store", type=int, dest="mult", default=10, help="Displacement multiplyer")
-parser.add_argument('--nac', dest='nac', action='store_false')
+parser.add_argument('--nac', dest='nac', action='store_true')
 parser.add_argument("--factor", action="store", type=float, dest="factor", 
-                     default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit)")
+                     default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
 parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
                       help="Direction of q-vector for non-analytical term")
 
@@ -149,9 +149,9 @@ for freq in frequencies:
 
 # Abinit use atomic units
 if (args.calc=='abinit'):
-    Angst2Bohr=1.889725989
+    lUnits=1.889725989
 else:
-    Angst2Bohr=1
+    lUnits=1
 
 for j in range(natom*3):
     out_fh.write('%d\n' % natom)
@@ -160,10 +160,10 @@ for j in range(natom*3):
     for i in range(natom):
         shiftvec=[0.0e0,0.0e0,0.0e0]
         for l in range(3):
-            shiftvec[l]=eigvecs[i*3+l,j]*sqrt(1/masses[i])/Angst2Bohr*args.mult
+            shiftvec[l]=eigvecs[i*3+l,j]*sqrt(1/masses[i])/lUnits*args.mult
 
         out_fh.write('%s '% chemel[i])
-        out_fh.write(' '.join(' % 11.8f' % (cartpos[i][l]/Angst2Bohr) for l in range(3)))
+        out_fh.write(' '.join(' % 11.8f' % (cartpos[i][l]/lUnits) for l in range(3)))
         out_fh.write(' '.join(' % 11.8f' % -shiftvec[l] for l in range(3)))
         out_fh.write('\n')
 
