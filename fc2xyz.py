@@ -45,7 +45,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Script to generate atomic displacements ini xyz format')
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="in_fn",  help="Input filename")
-parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='abinit.xyz', help="Output filename")
+parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='modes.xyz', help="Output filename")
 parser.add_argument("-c", "--calc", action="store", type=str, dest="calc",  help="Calculator (abinit,vasp,qe,castep,cp2k)")
 parser.add_argument("-f", "--fc", action="store", type=str, dest="fc_fn", default='FORCE_CONSTANTS', help="Force constants filename")
 parser.add_argument("-s", "--shift", action="store", type=str, dest="shift_fn",  help="Shift positions filename")
@@ -55,6 +55,10 @@ parser.add_argument("--factor", action="store", type=float, dest="factor",
                      default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
 parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
                       help="Direction of q-vector for non-analytical term")
+parser.add_argument("-d", "--dim", action="store", type=str, dest="dim", default="",
+                                                help="Supercell Transformation matrix")
+parser.add_argument("--irreps", dest="irreps", action="store_true",
+                                                    default=False, help="Find Irreducible representations and print in input files")
 
 Angst2Bohr=1.889725989
 
@@ -69,7 +73,15 @@ try:
 except IOError:
     print("ERROR Couldn't open input file, exiting...\n")
     sys.exit(1)
-sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
+if ( len(args.dim.split()) > 0 ):
+    if (len(args.dim.split()) > 3):
+        sc=np.array(float(d) for d in args.dim).reshape(3,3)
+    else:
+        sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
+        for i in range(3):
+            sc[i][i]=float(args.dim.split()[i])
+else:
+    sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
 pm=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
 
 ph = phonopy.load(supercell_matrix=sc,
@@ -78,13 +90,31 @@ ph = phonopy.load(supercell_matrix=sc,
                   is_nac=args.nac,  calculator=args.calc, factor=args.factor,
                   force_constants_filename=args.fc_fn)
 
-basis=ph.get_unitcell().get_cell()
-xred=ph.get_unitcell().get_scaled_positions()
+basis = ph.get_unitcell().get_cell()
+xred = ph.get_unitcell().get_scaled_positions()
 
-natom=len(xred)
-masses=ph.get_unitcell().get_masses()
-chemel=ph.get_unitcell().get_chemical_symbols()
+natom = len(xred)
+masses = ph.get_unitcell().get_masses()
+chemel = ph.get_unitcell().get_chemical_symbols()
+ph.set_irreps([0.0,0.0,0.0])
 
+if (args.irreps):
+    ir_labels=[]
+    for ir in ph.get_irreps()._ir_labels:
+        if ('T' in ir):
+            for i in range(3):
+                ir_labels.append(ir)
+            continue
+        elif  ('E' in ir):
+            for i in range(2):
+                ir_labels.append(ir)
+            continue
+        else:
+            ir_labels.append(ir)
+else:
+    ir_labels=["" for x in range(natom*3)]
+
+print(ir_labels)
 print ('Jmol command to plot unitcell (Angstroms):\n load "" {1 1 1} UNITCELL ['+
                         ','.join('%8.7f' % (b/Angst2Bohr) for b in basis.flatten()) + ']')
 
@@ -105,15 +135,16 @@ else:
             break
         shifts.append([float(line.split()[i]) for i in range(3)])
         l=l+1
-    if (len(shifts)!=natom):
+    if (len(shifts) != natom):
         print('The shift array have a wrong dimention')
         sys.exit(1)
-    shiftv=np.array(shifts).reshape(natom,3)
+    shiftv = np.array(shifts).reshape(natom, 3)
 
     for i in range(natom):
-        xred[i]=xred[i]+shiftv[i]
+        xred[i] = xred[i] + shiftv[i]
+        print(xred[i])
 
-cartpos=direct2cart(xred,basis)
+cartpos=direct2cart(xred, basis)
 
 
 try:
@@ -155,7 +186,7 @@ else:
 
 for j in range(natom*3):
     out_fh.write('%d\n' % natom)
-    out_fh.write('Mode %d %fcm-1\n' % ((j+1), frequencies[j]*args.factor ))
+    out_fh.write('Mode %d %fcm-1 IR: %s\n' % ((j+1), frequencies[j]*args.factor, ir_labels[j] ))
 
     for i in range(natom):
         shiftvec=[0.0e0,0.0e0,0.0e0]
@@ -168,6 +199,6 @@ for j in range(natom*3):
         out_fh.write('\n')
 
 out_fh.write ('Jmol command to plot unitcell (Angstroms):\n load "" {1 1 1} UNITCELL ['+
-                        ','.join('%8.7f' % (b/Angst2Bohr) for b in basis.flatten()) + ']')
+                        ','.join('%8.7f' % (b/lUnits) for b in basis.flatten()) + ']')
 
 

@@ -26,3 +26,5 @@ for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail
 14. eigvec2xyz_vasp_singlemode.py -- Extract atomic displacements for a given mode from Dynamical matrix stored in qpoints.yaml file (PHONOPY format).
 15. reciprocal_distance.py -- Get distance in reciprocal space and generate k-points
 16. fc2xyz.py -- create file with atomic displacements for each phonon mode using force contants in PHONOPY format.
+17. plot_band_dos_phonopy.py -- tool to plot nice bandstructure and phonon density of states using results obtained with phonopy.
+18. plot_phbands_and_dos.py -- tool to plot nice bandstructure and phonon density of states using results obtained with ABINIT.

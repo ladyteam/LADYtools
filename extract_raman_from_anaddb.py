@@ -75,11 +75,11 @@ for line in in_fh:
     if ('Raman susceptibilities of' in line):
         out_fh.write('# %s' % line)
         out_fh.write('# %s' % in_fh.readline())
-        out_fh.write('#N    freq         xx            xy            xz            yx            yy            yz           zx            zy            zz           Iparal         Iperp        Itotal\n')
+        out_fh.write('#N    freq           xx            xy            xz            yx            yy            yz           zx            zy            zz          Alpha         Gamma2         Ipar         Iperp         Itot\n')
     if ('Raman susceptibility of' in line):
         out_fh.write('# %s' % line)
         out_fh.write('# %s' % in_fh.readline())
-        out_fh.write('#N    freq         xx            xy            xz            yx            yy            yz           zx            zy            zz           Iparal         Iperp        Itotal\n')
+        out_fh.write('#N    freq           xx            xy            xz            yx            yy            yz           zx            zy            zz          Alpha         Gamma2         Ipar         Iperp         Itot\n')
 
     m=re.match('\s*Mod\s+(\d+)\s+\(\s*([+|-]?\d+\.\d+)\s*cm-1',line)
     if (m):
@@ -96,5 +96,5 @@ for line in in_fh:
         out_fh.write('%3d % 8.2f  ' % (int(m.group(1)),float(m.group(2))))
         for i in range(3):
             out_fh.write(''.join('% 12.10f ' % raman[i][j] for j in range(3)))
-        out_fh.write('% 12.10f % 12.10f %12.9f\n'% (Iparal,Iperp,Itot))
+        out_fh.write('% 12.10f % 12.10f % 12.10f % 12.10f %12.9f\n'% (alpha**2,gamma2,Iparal,Iperp,Itot))
 
