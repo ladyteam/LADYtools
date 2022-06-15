@@ -96,9 +96,10 @@ xred = ph.get_unitcell().get_scaled_positions()
 natom = len(xred)
 masses = ph.get_unitcell().get_masses()
 chemel = ph.get_unitcell().get_chemical_symbols()
-ph.set_irreps([0.0,0.0,0.0])
+
 
 if (args.irreps):
+    ph.set_irreps([0.0,0.0,0.0])
     ir_labels=[]
     for ir in ph.get_irreps()._ir_labels:
         if ('T' in ir):

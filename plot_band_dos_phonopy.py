@@ -186,7 +186,7 @@ ph.run_band_structure(qpoints, with_eigenvectors = True,
 
 band_dict = ph.get_band_structure_dict()
 ph.run_mesh()
-ph.run_total_dos(sigma = 0.5)
+ph.run_total_dos(sigma = 1.5)
 dos = ph.get_total_DOS()
 
 dist = band_dict['distances']  # dist is an array of segments array. Corresponds to x-axis
@@ -221,7 +221,8 @@ ax[1].grid(which='major', axis='both', c='gray', linestyle='-', alpha=0.8)
 
 ax[1].plot(dos[1], dos[0], c='black', lw=1.0, alpha=0.7)
 
-if (len(args.range.split())==2):
+if (args.range):
+  if (len(args.range.split())==2):
     ax[0].set_ylim(float(args.range.split()[0]),
                    float(args.range.split()[1]))
 
