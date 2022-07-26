@@ -196,7 +196,7 @@ for j in range(natom*3):
 
         out_fh.write('%s '% chemel[i])
         out_fh.write(' '.join(' % 11.8f' % (cartpos[i][l]/lUnits) for l in range(3)))
-        out_fh.write(' '.join(' % 11.8f' % -shiftvec[l] for l in range(3)))
+        out_fh.write(' '.join(' % 11.8f' % shiftvec[l] for l in range(3)))
         out_fh.write('\n')
 
 out_fh.write ('Jmol command to plot unitcell (Angstroms):\n load "" {1 1 1} UNITCELL ['+
