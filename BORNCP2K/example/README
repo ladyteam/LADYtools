@@ -1,0 +1,20 @@
+This example computes BORN charges and dielectric constants
+using finite difference method for GaN wurzite.
+1. First step is generation of 2x2x2 supercell with phonopy 
+(in real calculations supercell should be much bigger).
+$ phonopy --cp2k -d --dim="2 2 2" -c Punitcell.inp
+
+2. Generate input files:
+$ ./calc_born_cp2k.py -i Punitcell-supercell.inp -t displ -p born
+
+3. Edit dipole.inp and polar.inp files according to your system. This is
+CP2K patterns to calculate dipole moments and polarizability
+
+4. Run make_born_dirs.sh script to put generated files in separate
+directories.
+$ ./make_born_dirs.sh
+
+5. Run calculations in each directory.
+
+6. Generate BORN file using the following command:
+$ ./calc_born_cp2k.py -i Punitcell-supercell.inp -o BORN -t calc -p born

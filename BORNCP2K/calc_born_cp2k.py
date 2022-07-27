@@ -154,18 +154,22 @@ from os import path
 
 parser = argparse.ArgumentParser(description='The code generates input files and compute Born charges and dielectric tensor')
 
-parser.add_argument("-i", "--input", action="store", type=str, dest="str_fn", help="Input filename with structure")
-parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn", help="Output filename prefix")
-
-parser.add_argument("-p", "--policy", action="store", type=str, dest="policy", default='displ',
+parser.add_argument("-i", "--input", action="store", type=str, dest="str_fn",
+                    help="Input filename with structure")
+parser.add_argument("-p", "--prefix", action="store", type=str, dest="pref",
+                    help="Prefix of files to be generated")
+parser.add_argument("-o", "--out", action="store", type=str, dest="out_fn",
+                    default='BORN', help="Output filename (default: BORN)")
+parser.add_argument("-t", "--type", action="store", type=str, dest="policy", default='displ',
   help="Script modes. 'displ' -- generate input files; 'calc' -- calculate Born charges and Dielectric tensor")
 parser.add_argument("-D", "--delta", action="store", type=float, dest="delta", default=0.01, help="Atomic displacement in Angstrom")
 
 args = parser.parse_args()
 
-xyz=['x', 'y', 'z']
+xyz = ['x', 'y', 'z']
+abc = ['A', 'B', 'C']
 
-b2a = 0.52917721092
+b2a = 0.5291772109038
 atoms = read_cp2k(args.str_fn)
 basis = atoms[0].get_cell()
 cart = atoms[0].get_positions()
@@ -173,52 +177,67 @@ ucvol = atoms[0].get_volume()/(b2a**3)
 chemsyms = atoms[0].get_chemical_symbols()
 symmetry = Symmetry(atoms[0])
 
-
 if (args.policy == 'displ'):
     print('Generating file with ideal structure for calculations of dielectric tensor')
-    fn = ''.join('%s_ideal.xyz' % args.out_fn)
+    fn = ''.join('%s_ideal.xyz' % args.pref)
     genxyz(fn, basis, chemsyms, cart, 
                    comment='Ideal structure')
     for i in symmetry.get_independent_atoms():
         for d in range(3):
-            fn = ''.join('%s_%d_%s_plus.xyz' % (args.out_fn, i, xyz[d]))
+            fn = ''.join('%s_%d_%s_plus.xyz' % (args.pref, i, xyz[d]))
             print('Generating file with atom number %d shifted along direction %s' % (i, xyz[d]))
             cartdist = deepcopy(cart)
             cartdist[i][d] += args.delta
             genxyz(fn, basis, chemsyms, cartdist, 
                    comment=''.join('Atom number %d shifted forward along %s' %
                                    (i, xyz[d])))
-            fn = ''.join('%s_%d_%s_minus.xyz' % (args.out_fn, i, xyz[d]))
+            fn = ''.join('%s_%d_%s_minus.xyz' % (args.pref, i, xyz[d]))
             print('Generating file with atom number %d shifted along direction %s' % (i, xyz[d]))
             cartdist = deepcopy(cart)
             cartdist[i][d] -= args.delta
             genxyz(fn, basis, chemsyms, cartdist, 
                    comment=''.join('Atom number %d shifted backward along %s' %
                                    (i, xyz[d])))
+    print("Files were successfully generated.")
+    print("Don't forget to edit polar.inp and dipole.inp files.")
+    print("Lattice parameters:")
+    for i in range(3):
+        print('%s  %s' % 
+              (abc[i], ''.join('%9.6f ' % b for b in basis[i])))
 else:
     born = []
     for i in symmetry.get_independent_atoms():
         borntmp = np.zeros(9).reshape(3,3)
         for d in range(3):
-            fn = path.join('%s_%d_%s_plus' % (args.out_fn, i, xyz[d]),
+            fn = path.join('%s_%d_%s_plus' % (args.pref, i, xyz[d]),
                            'dipole.out')
-            print(fn)
             dipolep = get_dipole(fn)
-            print(dipolep)
-            fn = path.join('%s_%d_%s_minus' % (args.out_fn, i, xyz[d]),
+            fn = path.join('%s_%d_%s_minus' % (args.pref, i, xyz[d]),
                            'dipole.out')
-            print(fn)
+            print('Process file: %s' % fn)
             dipolem = get_dipole(fn)
-            print(dipolem)
             for j in range(3):
                 borntmp[j][d]=(dipolep[j]-dipolem[j])/2/(args.delta/b2a)
-        print(borntmp)
         born.append(borntmp)
 # epsilon
-    fn = path.join('%s_ideal' % args.out_fn, 'polar.out')
+    fn = path.join('%s_ideal' % args.pref, 'polar.out')
     if (get_cp2kver(fn) <= 6):
         epsilon = get_epsilon_cp2kv6(fn, ucvol)
     else:
         epsilon = get_epsilon_cp2k(fn, ucvol)
-    print('epsilon')
-    print(epsilon)
+    if(args.out_fn is None):
+        fn = 'BORN'
+    else:
+        fn = args.out_fn
+    try:
+        fh = open(fn, 'w')
+    except OSError as err:
+        print("ERROR Couldn't open output file %s for writing: %err" % (fn, err))
+    fh.write('%12.9f\n' % (b2a**2))
+    for e in epsilon:
+        fh.write(' %10.8f' % e)
+    fh.write('\n')
+    for i in range(len(symmetry.get_independent_atoms())):
+        for bornatom in born[i]:
+            fh.write('%s' % ''.join('% 12.8f ' % b  for b in bornatom))
+        fh.write('\n')
