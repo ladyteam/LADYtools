@@ -28,3 +28,5 @@ for i in displ*; do cd $i; echo -n "${i##displ-} "; grep etotal displ.out | tail
 16. fc2xyz.py -- create file with atomic displacements for each phonon mode using force contants in PHONOPY format.
 17. plot_band_dos_phonopy.py -- tool to plot nice bandstructure and phonon density of states using results obtained with phonopy.
 18. plot_phbands_and_dos.py -- tool to plot nice bandstructure and phonon density of states using results obtained with ABINIT.
+19. BORNCP2K -- calculate BORN charges using finite difference method within CP2K
+20. decompose_lo_on_to.py -- decompose LO eigenvectors on TO basis in order to establish the "nature" of LO modes.

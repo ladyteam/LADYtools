@@ -99,21 +99,19 @@ chemel = ph.get_unitcell().get_chemical_symbols()
 
 
 if (args.irreps):
-# Hack to do irrep analysis. Spin order will be restored later
-    ph.primitive.set_magnetic_moments(None)
-# Set IR for Gamma point
     ph.set_irreps([0.0,0.0,0.0])
-    ir_labels = ['N' for i in range(natom*3)]
-#    print(ph.get_irreps()._get_degenerate_sets()[0])
-#    print(ir_labelstmp)
-    for deg_set, ir in zip(ph.get_irreps()._get_degenerate_sets(),
-                           ph.get_irreps()._get_ir_labels()):
-        print(deg_set, ir)
-        for d in deg_set:
-            if(ir is None):
-                ir_labels[d] = 'Non'
-            else:
-                ir_labels[d] = ir
+    ir_labels=[]
+    for ir in ph.get_irreps()._ir_labels:
+        if ('T' in ir):
+            for i in range(3):
+                ir_labels.append(ir)
+            continue
+        elif  ('E' in ir):
+            for i in range(2):
+                ir_labels.append(ir)
+            continue
+        else:
+            ir_labels.append(ir)
 else:
     ir_labels=["" for x in range(natom*3)]
 
