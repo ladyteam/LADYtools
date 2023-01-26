@@ -33,10 +33,10 @@ import argparse
 parser = argparse.ArgumentParser(description='Decompose LO mode on TO basis')
 
 parser.add_argument("-i", "--input", action="store", type=str, dest="in_fn",  help="Input filename")
-parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  default='modes.xyz', help="Output filename")
+parser.add_argument("-o", "--output", action="store", type=str, dest="out_fn",  help="Output filename")
 parser.add_argument("-c", "--calc", action="store", type=str, dest="calc",  help="Calculator (abinit,vasp,qe,castep,cp2k)")
 parser.add_argument("-f", "--fc", action="store", type=str, dest="fc_fn", default='FORCE_CONSTANTS', help="Force constants filename")
-parser.add_argument("-n", "--lonum", action="store", type=int, dest="modenum", default=1, help="Number of LO mode, starting from 1")
+parser.add_argument("-n", "--lonum", action="store", type=int, dest="modenum",  help="Number of LO mode, starting from 1")
 parser.add_argument("--factor", action="store", type=float, dest="factor", 
                      default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
 parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
@@ -141,10 +141,32 @@ freqs_lo = ph.get_qpoints_dict()['frequencies'][0]
 #    for j in range(len(weights)):
 #        print("% 4.2f % 9.5f %s" % (weights[j], freqs_to[j], ir_labels[j]))
 
-print("Mode number %d Freq % 9.4f" % (args.modenum, freqs_lo[args.modenum-1]))
-weights=np.dot(eigens_lo[:,args.modenum-1], eigens_to)
-for j in range(natom):
-    print(''.join('% 8.6f ' % eigens_lo[:,args.modenum-1][3*j+k] for k in range(3)))
-for j in range(len(weights)):
-    print("% 4.2f % 10.4f %s" % (weights[j], freqs_to[j], ir_labels[j]))
+try:
+    out_fh = open(args.out_fn, 'w')
+except IOError:
+    print("ERROR Couldn't open output file for writting.")
+    sys.exit(1)
 
+# Single mode
+if(args.modenum):
+    out_fh.write("Mode number %d Freq % 9.4f\n" % (args.modenum, freqs_lo[args.modenum-1]))
+    out_fh.write("Atomic displacements (Cartesian coordinates):\n")
+    weights = np.dot(eigens_lo[:,args.modenum-1], eigens_to)
+    for j in range(natom):
+        out_fh.write(''.join('% 8.6f ' % eigens_lo[:,args.modenum-1][3*j+k] for k in range(3)))
+        out_fh.write('\n')
+    out_fh.write("Decomposition:\n")
+    for j in range(len(weights)):
+        out_fh.write("% 4.2f % 10.4f %s\n" % (weights[j], freqs_to[j], ir_labels[j]))
+else:
+    # Proceed all modes
+    for n in range(natom*3):
+        out_fh.write("Mode number %d Freq % 9.4f\n" % ((n+1), freqs_lo[n]))
+        out_fh.write("Atomic displacements (Cartesian coordinates):\n")
+        weights = np.dot(eigens_lo[:,n], eigens_to)
+        for j in range(natom):
+            out_fh.write(''.join('% 8.6f ' % eigens_lo[:,n][3*j+k] for k in range(3)))
+            out_fh.write('\n')
+        out_fh.write("Decomposition:\n")
+        for j in range(len(weights)):
+            out_fh.write("% 4.2f % 10.4f %s\n" % (weights[j], freqs_to[j], ir_labels[j]))
