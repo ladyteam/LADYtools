@@ -102,7 +102,11 @@ if (args.irreps):
 # Hack to do irrep analysis. Spin order will be restored later
     ph.primitive.set_magnetic_moments(None)
 # Set IR for Gamma point
-    ph.set_irreps([0.0,0.0,0.0])
+    if(args.nacqdir):
+        ph.set_irreps([0.0,0.0,0.0],
+                      nac_q_direction=[int(d) for d in args.nacqdir.split()])
+    else:
+        ph.set_irreps([0.0,0.0,0.0])
     ir_labels = ['N' for i in range(natom*3)]
 #    print(ph.get_irreps()._get_degenerate_sets()[0])
 #    print(ir_labelstmp)

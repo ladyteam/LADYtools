@@ -81,7 +81,7 @@ for line in in_fh:
         out_fh.write('# %s' % in_fh.readline())
         out_fh.write('#N    freq           xx            xy            xz            yx            yy            yz           zx            zy            zz          Alpha         Gamma2         Ipar         Iperp         Itot\n')
 
-    m=re.match('\s*Mod\s+(\d+)\s+\(\s*([+|-]?\d+\.\d+)\s*cm-1',line)
+    m=re.match('\s*Mod\s?(\d+)\s+\(\s*([+|-]?\d+\.\d+)\s*cm-1',line)
     if (m):
         raman=[]
         for j in range(3):
