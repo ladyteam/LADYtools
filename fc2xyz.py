@@ -193,7 +193,7 @@ else:
 
 for j in range(natom*3):
     out_fh.write('%d\n' % natom)
-    out_fh.write('Mode %d %fcm-1 IR: %s\n' % ((j+1), frequencies[j]*args.factor, ir_labels[j] ))
+    out_fh.write('Mode %d %f cm-1 IR: %s\n' % ((j+1), frequencies[j]*args.factor, ir_labels[j] ))
 
     for i in range(natom):
         shiftvec=[0.0e0,0.0e0,0.0e0]
