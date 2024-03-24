@@ -107,8 +107,8 @@ else:
     dim = [1, 0, 0, 0, 1, 0, 0, 0, 1]
 
 if (len(dim) > 3):
-    dim = np.array(dim).reshape(3, 3)
-
+    dim = np.array([float(d) for d in args.dim.split()]).reshape(3, 3)
+print(dim)
 if (args.read_force_constants):
     print("Read force contants from FORCE_CONSTANTS file")
     ph = phonopy.load(supercell_matrix = dim,
@@ -116,16 +116,14 @@ if (args.read_force_constants):
                   unitcell_filename = args.str_fn,
                   calculator = calc, factor = factorcm,
                   force_constants_filename = 'FORCE_CONSTANTS',
-                  symmetrize_fc = True, is_nac = args.nac,
-                  born_filename = 'BORN')
+                  symmetrize_fc = True, is_nac = args.nac,)
 else:
     ph = phonopy.load(supercell_matrix = dim,
                   primitive_matrix = [1, 0, 0, 0, 1, 0, 0, 0, 1],
                   unitcell_filename = args.str_fn,
                   calculator = calc, factor = factorcm,
                   force_sets_filename = args.fsetfn,
-                  symmetrize_fc = True, is_nac = args.nac,
-                  born_filename = 'BORN')
+                  symmetrize_fc = True, is_nac = args.nac,)
 
 # species=ph.primitive.get_chemical_symbols()
 numbers=ph.primitive.get_atomic_numbers()
@@ -148,19 +146,28 @@ if (args.path):
         path.append([float(eval(pt)) for pt in args.path.split()[i*3:i*3+3]])
 
 # Construct path using seekpath. Only first segments without interruptions
-else:    
+else:
     res = seekpath.getpaths.get_path(cell, with_time_reversal = True,
                                    recipe = 'hpkot', threshold = 1e-07,
                                    symprec = 1e-05, angle_tolerance = -1.0)
 
-    for i in range(len(res['path']) - 1):
+    for i in range(len(res['path'])-1):
+        print(res['path'][i])
         if (res['path'][i][1] != res['path'][i+1][0]):
+            print('Break point')
             if ('gamma' in res['path'][i][0].lower()):
                 labels.append(r'$\Gamma$')
+                path.append(res['point_coords'][res['path'][i][0]])
+            else:
+                labels.append(res['path'][i][0])
+                path.append(res['point_coords'][res['path'][i][0]])
+            if ('gamma' in res['path'][i][1].lower()):
+                labels.append(r'$\Gamma$')
+                path.append(res['point_coords'][res['path'][i][1]])
             else:
                 labels.append(res['path'][i][1])
-            path.append(res['point_coords'][res['path'][i][1]])
-            
+                path.append(res['point_coords'][res['path'][i][1]])
+
             break
         if ('gamma' in res['path'][i][0].lower()):
             labels.append(r'$\Gamma$')
@@ -202,14 +209,20 @@ fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]},
 # Plot Bandstructure Iterate over each segment
 for i in range(len(dist)):
 # Iteraton over each band
+    ysegm = []
     for nbnd in range(len(freq[i][0])):
         x=[]
         y=[]
+        # Iterate over k-points
         for j in range(len(dist[i])):
             x.append(dist[i][j]) # j-point in the i-th segment 
             y.append(freq[i][j][nbnd]) # frequency at j-point in the i-th segment for band nbnd
         ax[0].plot(x, y, c='black', lw=1.0, alpha=0.7)
-
+        ysegm.append(y)
+    with open("%s_%d.txt" % (args.out_fn, i), 'w') as fho:
+        for ii in range(len(x)):
+            fho.write("%8.4f %s\n" % (x[ii],
+                                    "".join(" %9.4f" % ysegm[n][ii] for n in range(len(ysegm)) )))
 ax[0].set_ylabel(r'Frequency, cm$^{-1}$', fontsize=12)
 ax[0].set_xlim([dist[0][0], dist[len(dist)-1][-1]])
 xticks=[dist[i][0] for i in range(len(dist))]
