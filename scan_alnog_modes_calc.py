@@ -87,8 +87,8 @@ parser.add_argument("--factor", action="store", type=float, dest="factor",
                      default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
 #parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
 #                      help="Direction of q-vector for non-analytical term")
-#parser.add_argument("-d", "--dim", action="store", type=str, dest="dim", default="",
-#                                                help="Supercell Transformation matrix")
+parser.add_argument("-d", "--dim", action="store", type=str, dest="dim", default="",
+                                                help="Supercell Transformation matrix")
 
 
 Angst2Bohr=1.889725989
@@ -110,15 +110,15 @@ if(args.weight):
     for i in range(len(args.weight.split())):
         weights[i]=float(args.weight.split()[i])
 #print(weights)
-#if ( len(args.dim.split()) > 0 ):
-#    if (len(args.dim.split()) > 3):
-#        sc=np.array(float(d) for d in args.dim).reshape(3,3)
-#    else:
-#        sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
-#        for i in range(3):
-#            sc[i][i]=float(args.dim.split()[i])
-#else:
-sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
+if ( len(args.dim.split()) > 0 ):
+    if (len(args.dim.split()) > 3):
+        sc=np.array([float(d) for d in args.dim.split()]).reshape(3,3)
+    else:
+        sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
+        for i in range(3):
+            sc[i][i]=float(args.dim.split()[i])
+else:
+    sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
 pm=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
 
 ph = phonopy.load(supercell_matrix=sc,

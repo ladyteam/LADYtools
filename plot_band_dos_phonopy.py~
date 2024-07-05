@@ -222,7 +222,7 @@ for i in range(len(dist)):
     with open("%s_%d.txt" % (args.out_fn, i), 'w') as fho:
         for ii in range(len(x)):
             fho.write("%8.4f %s\n" % (x[ii],
-                                    "".join(" %12.7f" % ysegm[n][ii] for n in range(len(ysegm)) )))
+                                    "".join(" %9.4f" % ysegm[n][ii] for n in range(len(ysegm)) )))
 ax[0].set_ylabel(r'Frequency, cm$^{-1}$', fontsize=12)
 ax[0].set_xlim([dist[0][0], dist[len(dist)-1][-1]])
 xticks=[dist[i][0] for i in range(len(dist))]
