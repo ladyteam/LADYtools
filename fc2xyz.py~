@@ -75,7 +75,7 @@ except IOError:
     sys.exit(1)
 if ( len(args.dim.split()) > 0 ):
     if (len(args.dim.split()) > 3):
-        sc=np.array(float(d) for d in args.dim).reshape(3,3)
+        sc=np.array([float(d) for d in args.dim.split()]).reshape(3,3)
     else:
         sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
         for i in range(3):
@@ -99,19 +99,25 @@ chemel = ph.get_unitcell().get_chemical_symbols()
 
 
 if (args.irreps):
-    ph.set_irreps([0.0,0.0,0.0])
-    ir_labels=[]
-    for ir in ph.get_irreps()._ir_labels:
-        if ('T' in ir):
-            for i in range(3):
-                ir_labels.append(ir)
-            continue
-        elif  ('E' in ir):
-            for i in range(2):
-                ir_labels.append(ir)
-            continue
-        else:
-            ir_labels.append(ir)
+# Hack to do irrep analysis. Spin order will be restored later
+    ph.primitive.set_magnetic_moments(None)
+# Set IR for Gamma point
+    if(args.nacqdir):
+        ph.set_irreps([0.0,0.0,0.0],
+                      nac_q_direction=[int(d) for d in args.nacqdir.split()])
+    else:
+        ph.set_irreps([0.0,0.0,0.0])
+    ir_labels = ['N' for i in range(natom*3)]
+#    print(ph.get_irreps()._get_degenerate_sets()[0])
+#    print(ir_labelstmp)
+    for deg_set, ir in zip(ph.get_irreps()._get_degenerate_sets(),
+                           ph.get_irreps()._get_ir_labels()):
+        print(deg_set, ir)
+        for d in deg_set:
+            if(ir is None):
+                ir_labels[d] = 'Non'
+            else:
+                ir_labels[d] = ir
 else:
     ir_labels=["" for x in range(natom*3)]
 
@@ -187,7 +193,7 @@ else:
 
 for j in range(natom*3):
     out_fh.write('%d\n' % natom)
-    out_fh.write('Mode %d %fcm-1 IR: %s\n' % ((j+1), frequencies[j]*args.factor, ir_labels[j] ))
+    out_fh.write('Mode %d %f cm-1 IR: %s\n' % ((j+1), frequencies[j]*args.factor, ir_labels[j] ))
 
     for i in range(natom):
         shiftvec=[0.0e0,0.0e0,0.0e0]

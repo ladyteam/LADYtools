@@ -72,15 +72,15 @@ for v in cell.cell:
    
 
 print("Species:")
-print(cell.get_chemical_symbols())
+print(cell.symbols)
 print('Atomic positions:')
-print(cell.get_scaled_positions())
+print(cell.scaled_positions)
 
-structure=[cell.cell,cell.get_scaled_positions(),cell.get_atomic_numbers()]
+structure=[cell.cell,cell.scaled_positions,cell.numbers]
 
 res=seekpath.getpaths.get_path(structure, with_time_reversal=True, recipe='hpkot', threshold=1e-07, symprec=1e-05, angle_tolerance=-1.0)
 print("Output data:")
-print("Space group: %s" %spl.get_spacegroup(cell=(cell.cell,cell.get_scaled_positions(),cell.get_atomic_numbers()), symprec=1e-3))
+print("Space group: %s" %spl.get_spacegroup(cell=(cell.cell,cell.scaled_positions,cell.numbers), symprec=1e-3))
 print('Primitive lattice:')
 
 b=[]

@@ -39,6 +39,8 @@ from math import exp
 from optparse import OptionParser
 import xml.etree.cElementTree as etree
 import argparse
+from importlib.metadata import version as pkgver
+from packaging.version import Version
 
 
 
@@ -75,7 +77,7 @@ except IOError:
     sys.exit(1)
 if ( len(args.dim.split()) > 0 ):
     if (len(args.dim.split()) > 3):
-        sc=np.array(float(d) for d in args.dim).reshape(3,3)
+        sc=np.array([float(d) for d in args.dim.split()]).reshape(3,3)
     else:
         sc=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
         for i in range(3):
@@ -90,17 +92,17 @@ ph = phonopy.load(supercell_matrix=sc,
                   is_nac=args.nac,  calculator=args.calc, factor=args.factor,
                   force_constants_filename=args.fc_fn)
 
-basis = ph.get_unitcell().get_cell()
-xred = ph.get_unitcell().get_scaled_positions()
+basis = ph.primitive.cell
+xred = ph.primitive.scaled_positions
 
 natom = len(xred)
-masses = ph.get_unitcell().get_masses()
-chemel = ph.get_unitcell().get_chemical_symbols()
+masses = ph.primitive.masses
+chemel = ph.primitive.symbols
 
 
 if (args.irreps):
 # Hack to do irrep analysis. Spin order will be restored later
-    ph.primitive.set_magnetic_moments(None)
+    ph.primitive.magnetic = None
 # Set IR for Gamma point
     if(args.nacqdir):
         ph.set_irreps([0.0,0.0,0.0],
@@ -110,14 +112,31 @@ if (args.irreps):
     ir_labels = ['N' for i in range(natom*3)]
 #    print(ph.get_irreps()._get_degenerate_sets()[0])
 #    print(ir_labelstmp)
-    for deg_set, ir in zip(ph.get_irreps()._get_degenerate_sets(),
-                           ph.get_irreps()._get_ir_labels()):
-        print(deg_set, ir)
-        for d in deg_set:
-            if(ir is None):
-                ir_labels[d] = 'Non'
-            else:
-                ir_labels[d] = ir
+    if (Version(pkgver('phonopy')) < Version('2.43.0')):
+        for deg_set, ir in zip(ph.irreps._get_degenerate_sets(),
+                               ph.irreps._get_ir_labels()):
+
+            print(deg_set, ir)
+            for d in deg_set:
+                if(ir is None):
+                    ir_labels[d] = 'Non'
+                else:
+                    ir_labels[d] = ir
+    else:
+        for deg_set, ir in zip(ph.irreps._get_degenerate_sets(),
+                               ph.irreps._get_ir_labels(ph.irreps._character_table,
+                                                        ph.irreps._characters,
+                                                        ph.irreps._rotation_symbols)):
+
+            print(deg_set, ir)
+            for d in deg_set:
+                if(ir is None):
+                    ir_labels[d] = 'Non'
+                else:
+                    ir_labels[d] = ir
+
+
+    print(ir_labels)
 else:
     ir_labels=["" for x in range(natom*3)]
 

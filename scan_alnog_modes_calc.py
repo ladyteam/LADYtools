@@ -54,7 +54,9 @@ def savestruct(calc, amp, basis, xred, species, conv_numbers, writeposcar=True):
 #        fn = ''.join('%s' % bfn)
         fn='shiftcell-%5.3f' % amp
         write_abinit(fn, cell)
-    
+    elif (calc == 'cp2k'):
+        fn='shiftcell-%5.3f.cell' % amp
+        write_castep(fn, cell)
 
     else:
         print('Writting structures for %s is not implemented yet' % calc)
