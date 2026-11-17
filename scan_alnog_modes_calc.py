@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.12
 # -*- coding: utf-8 -*-
 #
 # This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,27 @@
 # 
 # Author: Eugene Roginskii
 #
+#                    OLD API                 NEW API
+# Lattice vec	unitcell.get_cell()	unitcell.cell
+# Cartesian pos unitcell.get_positions()	unitcell.positions
+# Relative pos	unitcell.get_scaled_positions()	unitcell.scaled_positions
+# Chemsym	unitcell.get_chemical_symbols()	unitcell.symbols
+# Atomic num	unitcell.get_atomic_numbers()	unitcell.numbers
+# Mass	unitcell.get_masses()	unitcell.masses
+# Volume	unitcell.get_volume()	unitcell.volume
+
+
+import numpy as np
+import phonopy
+import re
+import yaml
+from math import sqrt
+import sys
+from math import pi
+from math import exp
+from optparse import OptionParser
+import xml.etree.cElementTree as etree
+import argparse
 
 
 def direct2cart(directpos,basis):
@@ -61,17 +82,6 @@ def savestruct(calc, amp, basis, xred, species, conv_numbers, writeposcar=True):
     else:
         print('Writting structures for %s is not implemented yet' % calc)
 
-import numpy as np
-import phonopy
-import re
-import yaml
-from math import sqrt
-import sys
-from math import pi
-from math import exp
-from optparse import OptionParser
-import xml.etree.cElementTree as etree
-import argparse
 
 
 
@@ -86,7 +96,7 @@ parser.add_argument("-a", "--ampl", action="store", type=str, dest="ampl",  help
 parser.add_argument("-w", "--weight", action="store", type=str, dest="weight",  help="Weight for each mode")
 #parser.add_argument('--nac', dest='nac', action='store_true')
 parser.add_argument("--factor", action="store", type=float, dest="factor", 
-                     default=716.8519, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
+                     default=521.47083, help="Frequency factor. Default for cm-1 521.47083 (vasp), 716.8519 (abinit), 3739.4256800756 (cp2k)")
 #parser.add_argument("--q-direction", action="store", type=str, dest="nacqdir", 
 #                      help="Direction of q-vector for non-analytical term")
 parser.add_argument("-d", "--dim", action="store", type=str, dest="dim", default="",
@@ -99,6 +109,10 @@ args = parser.parse_args()
 
 if (args.in_fn == None):
     print('Error. No input filename was given.')
+    sys.exit(1)
+
+if (args.calc == None):
+    print('Error. No calculator name was provided. Use --calc parameter.')
     sys.exit(1)
 
 try:
@@ -126,27 +140,27 @@ pm=np.array([1,0,0,0,1,0,0,0,1]).reshape(3,3)
 ph = phonopy.load(supercell_matrix=sc,
                   primitive_matrix=pm,
                   unitcell_filename=args.in_fn,
-                  is_nac=False,  calculator=args.calc, factor=args.factor,
+                  is_nac=False,  calculator=args.calc, # factor=args.factor,
                   force_constants_filename=args.fc_fn)
 
-basis = ph.get_unitcell().get_cell()
-xred = ph.get_unitcell().get_scaled_positions()
+ph.unit_conversion_factor = args.factor
+
+basis = ph.unitcell.cell
+xred = ph.unitcell.scaled_positions
 
 natom = len(xred)
-masses = ph.get_unitcell().get_masses()
-chemel = ph.get_unitcell().get_chemical_symbols()
-#chemel = ph.get_unitcell().symbols()
-chemnum = ph.get_unitcell().get_atomic_numbers()
+masses = ph.unitcell.masses
+chemel = ph.unitcell.symbols
+chemnum = ph.unitcell.numbers
+cartpos = ph.unitcell.positions
 
 ph.run_qpoints([[0, 0, 0]], with_eigenvectors=True)
-eigens_to = ph.get_qpoints_dict()['eigenvectors'][0].real
-freqs_to = ph.get_qpoints_dict()['frequencies'][0]
+eigens = ph.qpoints.eigenvectors[0].real
+freqs = ph.qpoints.frequencies[0]
 
-cartpos=direct2cart(xred, basis)
+print(freqs)
 
-dynmat_data = ph.get_dynamical_matrix_at_q([0,0,0])
-eigens = ph.get_qpoints_dict()['eigenvectors'][0].real
-freqs = ph.get_qpoints_dict()['frequencies'][0]
+
 
 # Abinit use atomic units
 if (args.calc=='abinit'):
